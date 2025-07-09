@@ -1,0 +1,20 @@
+<!-- Register Modal -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Join Kishan Hub</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-5">
+                <i class="fas fa-user-plus fa-5x text-success mb-3"></i>
+                <h4>Create Account</h4>
+                <p class="text-muted">Registration functionality will be implemented here</p>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'farmer-register' %}"><button class="btn btn-success btn-lg">Register as Farmer</button></a>
+                    <a href="{% url 'seller-register' %}"><button class="btn btn-outline-success btn-lg">Register as Seller</button></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

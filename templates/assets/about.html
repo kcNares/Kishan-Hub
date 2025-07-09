@@ -1,0 +1,132 @@
+{% extends 'assets/base.html' %}
+{% load static %}
+
+{% block content %}
+    <!-- Page Header -->
+    <section class="page-header bg-success text-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold mb-3">About Kishan Hub</h1>
+                    <p class="lead">Empowering farmers with modern agricultural solutions</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Content -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-6">
+                    <h2 class="display-5 fw-bold text-success mb-4">Our Mission</h2>
+                    <p class="lead mb-4">
+                        At Kishan Hub, we believe that every farmer deserves access to modern agricultural tools 
+                        without the burden of high ownership costs. Our mission is to revolutionize farming in Nepal 
+                        by providing affordable, high-quality equipment rental services.
+                    </p>
+                    <p class="text-muted">
+                        We understand the challenges faced by farmers in acquiring expensive machinery. 
+                        That's why we've created a platform that makes modern farming equipment accessible 
+                        to farmers of all scales, from small family farms to large agricultural enterprises.
+                    </p>
+                </div>
+                <div class="col-lg-6">
+                    <img src="{% static 'assets/img/mission.jpg' %}" alt="Our Mission" class="img-fluid rounded shadow">
+                </div>
+            </div>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-6 order-lg-2">
+                    <h2 class="display-5 fw-bold text-success mb-4">Our Vision</h2>
+                    <p class="lead mb-4">
+                        To become Nepal's leading agricultural equipment rental platform, 
+                        fostering sustainable farming practices and contributing to food security.
+                    </p>
+                    <p class="text-muted">
+                        We envision a future where technology and tradition work hand in hand, 
+                        where every farmer has the tools they need to maximize their productivity 
+                        while maintaining sustainable farming practices.
+                    </p>
+                </div>
+                <div class="col-lg-6 order-lg-1">
+                    <img src="{% static 'assets/img/vision.jpg' %}" alt="Our Vision" class="img-fluid rounded shadow">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-item">
+                        <i class="fas fa-users fa-3x text-success mb-3"></i>
+                        <h3 class="fw-bold">5,000+</h3>
+                        <p class="text-muted">Happy Farmers</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-item">
+                        <i class="fas fa-tools fa-3x text-success mb-3"></i>
+                        <h3 class="fw-bold">500+</h3>
+                        <p class="text-muted">Available Tools</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-item">
+                        <i class="fas fa-map-marker-alt fa-3x text-success mb-3"></i>
+                        <h3 class="fw-bold">77</h3>
+                        <p class="text-muted">Districts Covered</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-item">
+                        <i class="fas fa-calendar-check fa-3x text-success mb-3"></i>
+                        <h3 class="fw-bold">10,000+</h3>
+                        <p class="text-muted">Successful Rentals</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row mb-5">
+                <div class="col-12 text-center">
+                    <h2 class="display-5 fw-bold text-success mb-3">Our Team</h2>
+                    <p class="lead text-muted">Meet the people behind Kishan Hub</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="team-member text-center">
+                        <img src="{% static 'assets/img/img2.webp' %}" alt="CEO" class="rounded-circle mb-3">
+                        <h5 class="fw-bold">Rajesh Sharma</h5>
+                        <p class="text-success">CEO & Founder</p>
+                        <p class="text-muted">Agricultural engineer with 15+ years of experience in farming technology.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="team-member text-center">
+                        <img src="{% static 'assets/img/img1.png' %}" alt="CTO" class="rounded-circle mb-3">
+                        <h5 class="fw-bold">Priya Patel</h5>
+                        <p class="text-success">CTO</p>
+                        <p class="text-muted">Technology expert specializing in agricultural solutions and platform development.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="team-member text-center">
+                        <img src="{% static 'assets/img/img3.jpg' %}" alt="COO" class="rounded-circle mb-3">
+                        <h5 class="fw-bold">Amit Thapa</h5>
+                        <p class="text-success">COO</p>
+                        <p class="text-muted">Operations specialist ensuring smooth delivery and customer satisfaction.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}

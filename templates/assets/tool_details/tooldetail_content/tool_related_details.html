@@ -1,0 +1,94 @@
+{% load tz %}
+<!-- Tool Details Section -->
+<section class="py-5 mt-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="tool-image-container">
+                    <img src="{{ tool.image.url }}" alt="Tool" class="img-fluid rounded shadow" id="toolImage">
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="tool-details">
+                    <h1 class="display-5 fw-bold text-success mb-3" id="toolName">{{ tool.name }}</h1>
+                    
+                    <!-- Rating -->
+                    <div class="rating mb-3">
+                        <div class="stars">
+                            {% for star in star_list %}
+                                {% if star == "full" %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% elif star == "half" %}
+                                    <i class="fas fa-star-half-alt text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <span class="ms-2 text-muted">({{ average_rating }}/5 - {{ reviews.count }} reviews)</span>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="price-section mb-4">
+                        <h3 class="text-success fw-bold">Rs {{ tool.daily_rent_price|floatformat:0 }} <small class="text-muted fs-6">/day</small></h3>
+                        <p class="text-muted">Weekly: Rs {{ weekly_price }} | Monthly: Rs {{ monthly_price }}</p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="description mb-4">
+                        <h5 class="fw-bold">Description</h5>
+                        {% if tool.tags.all %}
+                        <div class="mb-3">
+                            {% for tag in tool.tags.all %}
+                            <span class="badge bg-success me-1">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <p class="text-muted">
+                            {{ tool.description }}
+                        </p>
+                    </div>
+
+                    <!-- Specifications -->
+                    <div class="specifications mb-4">
+                        <h5 class="fw-bold">More Details</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Shop Name:</strong> {{ tool.owner.shop_name }}</li>
+                            <li><strong>Shop Location:</strong> {{ tool.owner.location_name }}</li>
+                            <li><strong>Contact No.:</strong> {{ tool.owner.phone }}</li>
+                            <li><strong>Year:</strong> {% now "Y" %}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Rental Options -->
+                    <div class="rental-options mb-4">
+                        <h5 class="fw-bold">Rental Duration</h5>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="duration" id="daily" value="daily" checked>
+                            <label class="btn btn-outline-success" for="daily">Daily</label>
+                            
+                            <input type="radio" class="btn-check" name="duration" id="weekly" value="weekly">
+                            <label class="btn btn-outline-success" for="weekly">Weekly</label>
+                            
+                            <input type="radio" class="btn-check" name="duration" id="monthly" value="monthly">
+                            <label class="btn btn-outline-success" for="monthly">Monthly</label>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons d-flex">
+                        <button class="btn btn-success btn-lg me-3" onclick="rentTool()">
+                          <i class="fas fa-shopping-cart me-2"></i>Rent Now
+                        </button>
+                        <button class="btn btn-outline-success btn-lg me-3" onclick="bookTool()">
+                          <i class="fas fa-calendar-alt me-2"></i>Book for Later
+                        </button>
+                        <button class="btn btn-outline-secondary btn-lg" onclick="addToWishlist()">
+                          <i class="fas fa-heart me-2"></i>Wishlist
+                        </button>
+                    </div>                                                                                    
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

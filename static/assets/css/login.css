@@ -1,0 +1,242 @@
+/* ===== Base Reset ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #d0f3da, #ffffff);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* ===== Login Container ===== */
+.login-container {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    max-width: 420px;
+    width: 100%;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+/* ===== Brand/Title Section ===== */
+.login-header .brand-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    margin-bottom: 20px;
+}
+
+.brand-icon {
+    font-size: 2.5em;
+    margin-right: 10px;
+}
+
+.login-header span {
+    font-size: 1.8em;
+    color: #26734d;
+    font-weight: 700;
+}
+
+.login-title {
+    font-size: 1.6em;
+    color: #333333;
+    margin-bottom: 10px;
+}
+
+.login-subtitle {
+    font-size: 0.95em;
+    color: #777777;
+    margin-bottom: 25px;
+}
+
+/* ===== Form Styling ===== */
+.login-form {
+    text-align: left;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333333;
+    font-weight: 600;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    background: #f3f8f4;
+    border: 1px solid #cfe4d2;
+    border-radius: 5px;
+    padding: 8px 10px;
+    transition: border-color 0.3s;
+}
+
+.input-group:focus-within {
+    border-color: #5aa36f;
+}
+
+.input-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+    color: #5aa36f;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"],
+.login-form input[type="email"] {
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-size: 1em;
+    outline: none;
+    color: #333333;
+    padding: 6px 0;
+}
+
+/* ===== Forgot Password ===== */
+.forgot-password {
+    text-align: right;
+    margin-top: 8px;
+    margin-bottom: 20px;
+}
+
+.forgot-password a {
+    text-decoration: none;
+    color: #5aa36f;
+    font-weight: 500;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Submit Button ===== */
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(to right, #5aa36f, #26734d);
+    border: none;
+    border-radius: 5px;
+    color: #ffffff;
+    font-size: 1.05em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+}
+
+.login-btn span {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+.login-btn:hover {
+    background: linear-gradient(to right, #26734d, #5aa36f);
+}
+
+/* ===== Divider / Register Links ===== */
+.divider {
+    margin: 30px 0 20px;
+    text-align: center;
+    color: #777777;
+    font-size: 0.95em;
+}
+
+.register-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.register-btn {
+    text-decoration: none;
+    padding: 12px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #ffffff;
+    transition: background 0.3s;
+    font-size: 1em;
+}
+
+.register-btn span {
+    margin-right: 8px;
+    font-size: 1.3em;
+}
+
+.register-btn.farmer {
+    background: linear-gradient(to right, #4caf50, #388e3c);
+}
+
+.register-btn.farmer:hover {
+    background: linear-gradient(to right, #388e3c, #4caf50);
+}
+
+.register-btn.seller {
+    background: linear-gradient(to right, #ff9800, #f57c00);
+}
+
+.register-btn.seller:hover {
+    background: linear-gradient(to right, #f57c00, #ff9800);
+}
+
+/* ===== Error / Success Messages ===== */
+.error {
+    color: #d93025;
+    font-size: 0.85em;
+    margin-top: 4px;
+}
+
+.messages-container {
+    margin-bottom: 1rem;
+    transition: opacity 0.5s ease;
+}
+
+.messages-container > div {
+    padding: 12px 20px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: white;
+}
+
+.messages-container > div.success {
+    background-color: #48bb78;
+}
+
+.messages-container > div.error {
+    background-color: #f56565;
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 480px) {
+    .login-container {
+        padding: 30px 20px;
+    }
+
+    .brand-icon {
+        font-size: 2em;
+    }
+
+    .login-header span {
+        font-size: 1.4em;
+    }
+}

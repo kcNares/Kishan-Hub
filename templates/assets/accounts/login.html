@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Kishan Hub</title>
+  <link rel="stylesheet" href="{% static 'assets/css/login.css' %}" />
+</head>
+<body>
+
+  <div class="login-container">
+
+    <!-- Brand -->
+    <a href="#" class="brand-link">
+      <div class="brand-icon">🌱</div>
+      Kishan Hub
+    </a>
+
+    <!-- Title -->
+    <h2 class="login-title">Welcome Back</h2>
+    <p class="login-subtitle">Sign in to your account</p>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-container" id="messages-container">
+      {% for message in messages %}
+        <div class="{{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Login Form -->
+    <form class="login-form" id="loginForm" method="POST" action="{{ form_action }}">
+      {% csrf_token %}
+
+      <!-- Username -->
+      <div class="form-group">
+        <label for="{{ form.username.id_for_label }}">Username</label>
+        <div class="input-group">
+          <span class="input-icon">👤</span>
+          {{ form.username }}
+        </div>
+        {% if form.username.errors %}
+          <div class="error">
+            {% for error in form.username.errors %}
+              {{ error }}<br />
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          {{ form.password }}
+        </div>
+        {% if form.password.errors %}
+          <div class="error">
+            {% for error in form.password.errors %}
+              {{ error }}<br />
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Non-field errors -->
+      {% if form.non_field_errors %}
+        <div class="error">
+          {% for error in form.non_field_errors %}
+            {{ error }}<br />
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="forgot-password">
+        <a href="#">Forgot Password?</a>
+      </div>
+
+      <button type="submit" class="login-btn">
+        <span>🚀</span> Sign In
+      </button>
+    </form>
+
+    <div class="divider">
+      Don't have an account?
+    </div>
+
+    <div class="register-links">
+      {% if role == "farmer" %}
+        <a href="{% url 'farmer-register' %}" class="register-btn farmer">
+          <span>🚜</span> Register as Farmer
+        </a>
+      {% elif role == "seller" %}
+        <a href="{% url 'seller-register' %}" class="register-btn seller">
+          <span>🏪</span> Register as Seller
+        </a>
+      {% else %}
+        <a href="{% url 'farmer-register' %}" class="register-btn farmer">
+          <span>🚜</span> Register as Farmer
+        </a>
+        <a href="{% url 'seller-register' %}" class="register-btn seller">
+          <span>🏪</span> Register as Seller
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Auto-hide messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', () => {
+      const messagesContainer = document.getElementById('messages-container');
+      if (messagesContainer) {
+        setTimeout(() => {
+          // Fade out opacity
+          messagesContainer.style.opacity = '0';
+          // Then hide the container completely after transition
+          setTimeout(() => {
+            messagesContainer.style.display = 'none';
+          }, 500);
+        }, 5000); // 5000 ms = 5 seconds
+      }
+    });
+  </script>
+</body>
+</html>

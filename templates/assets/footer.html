@@ -1,0 +1,45 @@
+{% load static %}
+<!-- Footer -->
+<footer class="bg-dark text-white py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <h5 class="fw-bold mb-3">
+                    <i class="fas fa-seedling me-2"></i>Kishan Hub
+                </h5>
+                <p>Empowering farmers with modern agricultural tools and equipment rental services across Nepal.</p>
+                <div class="social-links">
+                    <a href="#" class="text-white me-3"><i class="fab fa-facebook fa-lg"></i></a>
+                    <a href="#" class="text-white me-3"><i class="fab fa-twitter fa-lg"></i></a>
+                    <a href="#" class="text-white me-3"><i class="fab fa-instagram fa-lg"></i></a>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h6 class="fw-bold mb-3">Quick Links</h6>
+                <ul class="list-unstyled">
+                    <li><a href="/" class="text-white-50">Home</a></li>
+                    <li><a href="{% url 'all-tools' %}" class="text-white-50">Tools</a></li>
+                    <li><a href="{% url 'about' %}" class="text-white-50">About</a></li>
+                    <li><a href="#" class="text-white-50">Contact</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="fw-bold mb-3">Payment Methods</h6>
+                <div class="payment-methods">
+                    <img src="{% static 'assets/img/e-sewa.jpg' %}" alt="eSewa" class="payment-logo me-2">
+                    <!-- <img src="/placeholder.svg?height=40&width=80&text=Khalti" alt="Khalti" class="payment-logo"> -->
+                </div>
+            </div>
+            <div class="col-lg-3 mb-4">
+                <h6 class="fw-bold mb-3">Contact Info</h6>
+                <p><i class="fas fa-map-marker-alt me-2"></i>Kathmandu, Nepal</p>
+                <p><i class="fas fa-phone me-2"></i>+977-1-4567890</p>
+                <p><i class="fas fa-envelope me-2"></i>info@kishanhub.com</p>
+            </div>
+        </div>
+        <hr class="my-4">
+        <div class="text-center">
+            <p>&copy; 2024 Kishan Hub. All rights reserved.</p>
+        </div>
+    </div>
+</footer>

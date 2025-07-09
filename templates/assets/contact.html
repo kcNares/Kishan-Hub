@@ -1,0 +1,197 @@
+{% extends 'assets/base.html' %}
+{% load static %}
+
+{% block content %}
+    <!-- Page Header -->
+<section class="page-header bg-success text-white">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold mb-3">Contact Us</h1>
+                <p class="lead">Get in touch with our team</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mb-5">
+                <div class="contact-form bg-light p-5 rounded shadow">
+                    <h3 class="fw-bold mb-4">Send us a Message</h3>
+                    <form>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Subject</label>
+                                <select class="form-select">
+                                    <option>General Inquiry</option>
+                                    <option>Tool Rental</option>
+                                    <option>Technical Support</option>
+                                    <option>Partnership</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-control" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>Send Message
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="contact-info">
+                    <div class="info-item mb-4 p-4 bg-white rounded shadow">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-map-marker-alt fa-2x text-success me-3"></i>
+                            <div>
+                                <h5 class="fw-bold mb-1">Address</h5>
+                                <p class="text-muted mb-0">Kathmandu, Nepal<br>Thamel, Ward No. 26</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-item mb-4 p-4 bg-white rounded shadow">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-phone fa-2x text-success me-3"></i>
+                            <div>
+                                <h5 class="fw-bold mb-1">Phone</h5>
+                                <p class="text-muted mb-0">+977-1-4567890<br>+977-9876543210</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-item mb-4 p-4 bg-white rounded shadow">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-envelope fa-2x text-success me-3"></i>
+                            <div>
+                                <h5 class="fw-bold mb-1">Email</h5>
+                                <p class="text-muted mb-0">info@kishanhub.com<br>support@kishanhub.com</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-item p-4 bg-white rounded shadow">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-clock fa-2x text-success me-3"></i>
+                            <div>
+                                <h5 class="fw-bold mb-1">Business Hours</h5>
+                                <p class="text-muted mb-0">
+                                    Mon - Fri: 9:00 AM - 6:00 PM<br>
+                                    Sat: 9:00 AM - 4:00 PM<br>
+                                    Sun: Closed
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Map Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h3 class="fw-bold mb-4 text-center">Find Us</h3>
+                <div class="map-container rounded shadow">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3532.6869048064157!2d85.31068831506213!3d27.715245982790434!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb190a29c5b4c5%3A0x74c5c6e8df4e6b5e!2sThamel%2C%20Kathmandu%2044600!5e0!3m2!1sen!2snp!4v1635789012345!5m2!1sen!2snp" 
+                        width="100%" 
+                        height="400" 
+                        style="border:0;" 
+                        allowfullscreen="" 
+                        loading="lazy">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h3 class="fw-bold text-success">Frequently Asked Questions</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                How do I rent a tool?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Simply browse our tools, select the one you need, choose your rental duration, and complete the booking process. We'll deliver it to your location.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                What payment methods do you accept?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                We accept eSewa and Khalti for convenient digital payments. Cash on delivery is also available in select areas.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                Do you provide delivery service?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes, we provide delivery service to most areas in Nepal. Delivery charges may apply based on your location.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                What if the tool gets damaged during rental?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                We have insurance coverage for our tools. Minor damages are covered, but major damages may incur additional charges based on our terms and conditions.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,79 @@
+<!-- Sidebar -->
+<nav class="col-md-3 col-lg-2 d-md-block sidebar">
+    <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+
+            <!-- Always show Dashboard -->
+            <li class="nav-item">
+                <a class="nav-link active" href="{% url 'seller-dashboard' %}" data-section="dashboard">
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    Dashboard
+                </a>
+            </li>
+
+            {% if not seller %}
+                <!-- Show Register Shop only if seller does not exist -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'register-shop' %}">
+                        <i class="fas fa-shop me-2"></i>
+                        Register Shop
+                    </a>
+                </li>
+            {% else %}
+                {% if seller.is_approved %}
+                    <!-- Seller exists and is approved -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tools-list' %}" data-section="tools">
+                            <i class="fas fa-tools me-2"></i>
+                            My Tools
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'categories-list' %}" data-section="categories">
+                            <i class="fas fa-folder me-2"></i>
+                            Categories
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tags-list' %}" data-section="tags">
+                            <i class="fas fa-tag me-2"></i>
+                            Tags
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="bookings">
+                            <i class="fas fa-calendar-check me-2"></i>
+                            Bookings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="earnings">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Earnings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="reviews">
+                            <i class="fas fa-star me-2"></i>
+                            Reviews
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="analytics">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Analytics
+                        </a>
+                    </li>
+                {% else %}
+                    <!-- Seller exists but not approved -->
+                    <li class="nav-item">
+                        <a class="nav-link disabled">
+                            <i class="fas fa-hourglass-half me-2"></i>
+                            Awaiting Approval
+                        </a>
+                    </li>
+                {% endif %}
+            {% endif %}
+        </ul>
+    </div>
+</nav>

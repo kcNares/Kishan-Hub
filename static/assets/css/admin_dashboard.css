@@ -1,0 +1,91 @@
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .sidebar {
+    background-color: #198754;
+    color: #fff;
+    min-height: 100vh;
+    padding-top: 1rem;
+  }
+  
+  .sidebar .nav-link {
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+  }
+  
+  .sidebar .nav-link:hover {
+    background-color: #157347;
+    text-decoration: none;
+  }
+  
+  .sidebar .nav-link i {
+    margin-right: 10px;
+  }
+  
+  .logo {
+    font-size: 1.5rem;
+  }
+  
+  .top-navbar {
+    background-color: #ffffff;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .logout-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-radius: 5px;
+  }
+  
+  .logout-button:hover {
+    background-color: #bb2d3b;
+  }
+  
+  .card .icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status.active {
+    color: green;
+    font-weight: bold;
+  }
+  
+  .status.inactive {
+    color: red;
+    font-weight: bold;
+  }
+  
+  .menu-toggle {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+  
+  @media (max-width: 768px) {
+    .sidebar {
+      position: absolute;
+      left: -100%;
+      top: 0;
+      z-index: 999;
+      width: 250px;
+      transition: left 0.3s ease;
+    }
+  
+    .sidebar.active {
+      left: 0;
+    }
+  
+    .menu-toggle {
+      display: block;
+    }
+  }
+  

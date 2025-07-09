@@ -1,0 +1,67 @@
+<section class="py-4 bg-light">
+    <div class="container">
+        <form method="get" id="filterForm">
+            <div class="row">
+                <div class="col-md-3">
+                    <select class="form-select" id="categoryFilter" name="category">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category.name }}" {% if selected_category == category.name %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="priceFilter">
+                        <option value="">All Prices</option>
+                        <option value="0-1000">Rs 0 - 1,000</option>
+                        <option value="1000-5000">Rs 1,000 - 5,000</option>
+                        <option value="5000-10000">Rs 5,000 - 10,000</option>
+                        <option value="10000+">Rs 10,000+</option>
+                    </select>
+                    <!-- Hidden fields to submit actual min/max prices -->
+                    <input type="hidden" name="min_price" id="min_price">
+                    <input type="hidden" name="max_price" id="max_price">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="sort_by" id="sort_by">
+                        <option value="">Default</option>
+                        <option value="price_asc" {% if sort_by == "price_asc" %}selected{% endif %}>Price: Low to High</option>
+                        <option value="price_desc" {% if sort_by == "price_desc" %}selected{% endif %}>Price: High to Low</option>
+                        <option value="rating" {% if sort_by == "rating" %}selected{% endif %}>Top Rated</option>
+                        <option value="newest" {% if sort_by == "newest" %}selected{% endif %}>Newest</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-success w-100" onclick="applyFilters(event)">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+    function applyFilters(event) {
+        event.preventDefault(); // Prevent normal submission
+        const priceFilter = document.getElementById("priceFilter").value;
+        const minPriceInput = document.getElementById("min_price");
+        const maxPriceInput = document.getElementById("max_price");
+
+        if (priceFilter === "") {
+            minPriceInput.value = "";
+            maxPriceInput.value = "";
+        } else if (priceFilter === "10000+") {
+            minPriceInput.value = "10000";
+            maxPriceInput.value = "";
+        } else {
+            const [min, max] = priceFilter.split("-");
+            minPriceInput.value = min;
+            maxPriceInput.value = max;
+        }
+
+        document.getElementById("filterForm").submit();
+    }
+</script>

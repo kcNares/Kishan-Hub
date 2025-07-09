@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Farmer Registration - Kishan Hub</title>
+  <link rel="stylesheet" href="{% static 'assets/css/farmer_registration.css' %}">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-header">
+      <a href="#" class="brand-link">
+        <div class="brand-icon">
+          <!-- SVG logo replaces 🌱 -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C7.59 2 4 5.59 4 10c0 2.97 1.63 5.63 4.12 7.2C8.04 20.82 10.21 22 12 22s3.96-1.18 3.88-4.8C18.37 15.63 20 12.97 20 10c0-4.41-3.59-8-8-8zm0 2c3.31 0 6 2.69 6 6 0 2.02-1.02 3.8-2.57 4.88l-.43.32.03.53c.03 1.62-.21 2.53-1.03 3.09-.79.54-2.08.68-3 .68-.92 0-2.21-.14-3-.68-.82-.56-1.06-1.47-1.03-3.09l.03-.53-.43-.32C7.02 11.8 6 10.02 6 8c0-3.31 2.69-6 6-6z"/>
+          </svg>
+        </div>
+        <span>Kishan Hub</span>
+      </a>
+      <h2 class="auth-title">Farmer Registration</h2>
+      <p class="auth-subtitle">Start renting your tools</p>
+    </div>
+
+    <form class="auth-form" id="farmerRegisterForm" method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="form-group">
+                <label for="firstName">First Name</label>
+                <div class="input-group">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="firstName" name="first_name" placeholder="Enter first name" value="{{ form.first_name.value|default:'' }}" required>
+                </div>
+                {% if form.first_name.errors %}
+                    <small>{{ form.first_name.errors.0 }}</small>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="lastName">Last Name</label>
+                <div class="input-group">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="lastName" name="last_name" placeholder="Enter last name" value="{{ form.last_name.value|default:'' }}" required>
+                </div>
+                {% if form.last_name.errors %}
+                    <small>{{ form.last_name.errors.0 }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-group">
+                <span class="input-icon">@</span>
+                <input type="text" id="username" name="username" placeholder="Choose a username" value="{{ form.username.value|default:'' }}" required>
+            </div>
+            {% if form.username.errors %}
+                <small>{{ form.username.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-group">
+                <span class="input-icon">✉️</span>
+                <input type="email" id="email" name="email" placeholder="Enter your email" value="{{ form.email.value|default:'' }}" required>
+            </div>
+            {% if form.email.errors %}
+                <small>{{ form.email.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <div class="input-group">
+                <span class="input-icon">📞</span>
+                <input type="tel" id="phone" name="phone" placeholder="Enter phone number" value="{{ form.phone.value|default:'' }}" required>
+            </div>
+            {% if form.phone.errors %}
+                <small>{{ form.phone.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <!-- NEW LOCATION FIELD -->
+        <div class="form-group">
+            <label for="location">Location</label>
+            <div class="input-group">
+                <span class="input-icon">📍</span>
+                <input type="text" id="location" name="location" placeholder="You must add your current location." value="{{ form.location.value|default:'' }}" required>
+            </div>
+            {% if form.location.errors %}
+                <small>{{ form.location.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-group">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="password" name="password" placeholder="Create password" required>
+                </div>
+                {% if form.password.errors %}
+                    <small>{{ form.password.errors.0 }}</small>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <div class="input-group">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm password" required>
+                </div>
+                {% if form.confirm_password.errors %}
+                    <small>{{ form.confirm_password.errors.0 }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+          <div class="error-message">
+            {{ form.non_field_errors.0 }}
+          </div>
+        {% endif %}
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+            <label for="agreeTerms">
+                I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            </label>
+        </div>
+
+        <button type="submit" class="submit-btn">
+            <span>👨‍🌾</span>
+            Create Farmer Account
+        </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Already have an account? <a href="#">Login here</a></p>
+    </div>
+  </div>
+</body>
+</html>

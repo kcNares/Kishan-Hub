@@ -1,0 +1,115 @@
+{% extends 'assets/accounts/admin_dashboard/admin_dashboard_base.html' %}
+
+{% block extra_head %}
+<!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<section class="container-fluid table-section mt-4">
+
+  <h2 class="mb-4 text-primary fw-bold">Total Shops Registered</h2>
+
+  {% if message %}
+    <div class="alert alert-{{ message_tag }} alert-dismissible fade show shadow-sm" role="alert">
+      <i class="fas fa-info-circle me-2"></i> {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+
+  <!-- Pending Shops -->
+  <div class="card mb-5 shadow-sm border-0">
+    <div class="card-header bg-warning-subtle fw-semibold fs-5 border-bottom">
+      <i class="fas fa-hourglass-half me-2 text-warning"></i> Shops Pending Approval
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover table-striped align-middle mb-0">
+        <thead class="table-warning text-dark">
+          <tr>
+            <th>#</th>
+            <th>Seller</th>
+            <th>Shop</th>
+            <th>Location</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in pending_shops %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-medium">{{ shop.full_name }}</td>
+            <td>{{ shop.shop_name }}</td>
+            <td><span class="badge bg-light text-dark">{{ shop.location_name }}</span></td>
+            <td class="text-end">
+              <form method="post" class="d-inline" onsubmit="return confirm('Approve this shop?');">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                <button name="action" value="approve" class="btn btn-success btn-sm me-1">
+                  <i class="fas fa-check"></i> Approve
+                </button>
+              </form>
+              <form method="post" class="d-inline" onsubmit="return confirm('Delete this shop?');">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                <button name="action" value="delete" class="btn btn-danger btn-sm">
+                  <i class="fas fa-trash-alt"></i> Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-3">No shops awaiting approval.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Approved Shops -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-success-subtle fw-semibold fs-5 border-bottom">
+      <i class="fas fa-check-circle me-2 text-success"></i> Approved Shops
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover table-striped align-middle mb-0">
+        <thead class="table-success text-dark">
+          <tr>
+            <th>#</th>
+            <th>Seller</th>
+            <th>Shop</th>
+            <th>Location</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in approved_shops %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-medium">{{ shop.full_name }}</td>
+            <td>{{ shop.shop_name }}</td>
+            <td><span class="badge bg-light text-dark">{{ shop.location_name }}</span></td>
+            <td class="text-end">
+              <button class="btn btn-outline-success btn-sm me-1" disabled>
+                <i class="fas fa-check-circle"></i> Approved
+              </button>
+              <form method="post" class="d-inline" onsubmit="return confirm('Delete this approved shop?');">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                <button name="action" value="delete" class="btn btn-danger btn-sm">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-3">No approved shops.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+{% endblock %}

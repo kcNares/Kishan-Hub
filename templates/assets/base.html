@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kishan Hub - Agricultural Tools Rental</title>
+    <link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
+</head>
+<body>
+    {% include 'assets/navbar.html' %}
+
+
+    {% block content %}
+
+    {% endblock %}
+    
+
+    {% include 'assets/footer.html' %}
+    {% include 'assets/login_model.html' %}
+    {% include 'assets/register_model.html' %}
+    
+
+    
+
+    <script src="{% static 'assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'assets/js/script.js' %}"></script>
+</body>
+</html>

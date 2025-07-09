@@ -1,0 +1,32 @@
+<!-- Header -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-success fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <i class="fas fa-seedling me-2"></i>
+            <strong>Kishan Hub</strong>
+        </a>
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                <i class="fas fa-user-circle me-2" style="font-size: 40px;"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <!-- <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li> -->
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form method="post" action="{% url 'farmer-logout' %}">
+                      {% csrf_token %}
+                      <button
+                        type="submit"
+                        class="dropdown-item d-flex justify-content-center align-items-center"
+                        style="border:none; background:none; padding:0; margin:0; cursor:pointer; color:inherit; font:inherit; width:100%;"
+                      >
+                        <i class="fas  me-2"></i> Logout
+                      </button>
+                    </form>
+                  </li>
+                  
+            </ul>
+        </div>
+    </div>
+</nav>

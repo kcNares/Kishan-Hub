@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KishanHub Admin Dashboard</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{% static 'assets/css/admin_dashboard.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar" id="sidebar">
+        <div class="logo text-center fw-bold mb-4">🌾 KishanHub</div>
+        <ul class="nav flex-column">
+          <li class="nav-item"><a href="{% url 'admin-dashboard' %}" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+          <li class="nav-item"><a href="{% url 'registered-shops' %}" class="nav-link"><i class="fas fa-seedling"></i> Registered Shop</a></li>
+          <li class="nav-item"><a href="{% url 'registered-sellers' %}" class="nav-link"><i class="fas fa-store-alt"></i> Sellers</a></li>
+          <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-calendar-check"></i> Bookings</a></li>
+          <li class="nav-item"><a href="{% url 'registered-farmers' %}" class="nav-link"><i class="fas fa-users"></i> Farmers</a></li>
+          <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-chart-line"></i> Reports</a></li>
+        </ul>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
+        <!-- Header -->
+        <header class="top-navbar d-flex align-items-center justify-content-between">
+          <span class="menu-toggle" onclick="toggleSidebar()">&#9776;</span>
+          <h2 class="m-0">Admin Dashboard</h2>
+          {% if request.resolver_match.url_name == 'admin-dashboard' %}
+      <a href="{% url 'admin-logout' %}" class="logout-button">Logout</a>
+    {% endif %}
+        </header>
+
+            {% block content %}
+
+            {% endblock content %}
+        
+      </main>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Custom JS -->
+  <script src="{% static 'assets/js/admin_dashboard.js' %}"></script>
+</body>
+</html>
