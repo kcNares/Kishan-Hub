@@ -1,14 +1,15 @@
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
+from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.http import JsonResponse
 from .models import Seller
 from .forms import SellerForm
+from django.contrib import messages
 from .forms import ToolForm, CategoryForm, TagForm
-from kishan.models import Tool, Category, Tag
+from kishan.models import Booking, Tool, Category, Tag
 
 class SellerRegisterShopView(LoginRequiredMixin, CreateView):
     model = Seller
@@ -110,9 +111,7 @@ class ToolDeleteView(LoginRequiredMixin, View):
 
 # Category
 class CategoryListView(LoginRequiredMixin, View):
-    template_name = (
-        "assets/seller/register/category_add.html"
-    )
+    template_name = "assets/seller/register/category_add.html"
 
     def get(self, request):
         categories = Category.objects.all()
@@ -123,26 +122,23 @@ class CategoryListView(LoginRequiredMixin, View):
 
     def post(self, request):
         category_id = request.POST.get("category_id")
-        if category_id:
-            category = get_object_or_404(Category, pk=category_id)
-            form = CategoryForm(request.POST, instance=category)
-        else:
-            form = CategoryForm(request.POST)
+        instance = get_object_or_404(Category, pk=category_id) if category_id else None
+        form = CategoryForm(request.POST, instance=instance)
 
         if form.is_valid():
             form.save()
             return redirect("categories-list")
-        else:
-            categories = Category.objects.all()
-            return render(
-                request,
-                self.template_name,
-                {
-                    "categories": categories,
-                    "form": form,
-                    "form_errors": form.errors,
-                },
-            )
+
+        categories = Category.objects.all()
+        return render(
+            request,
+            self.template_name,
+            {
+                "categories": categories,
+                "form": form,
+                "form_errors": form.errors,
+            },
+        )
 
 
 class CategoryDeleteView(LoginRequiredMixin, View):
@@ -185,3 +181,48 @@ class TagDeleteView(LoginRequiredMixin, View):
         tag = get_object_or_404(Tag, pk=pk)
         tag.delete()
         return redirect("tags-list")
+
+
+class SellerBookingListView(LoginRequiredMixin, ListView):
+    model = Booking
+    template_name = "assets/seller/register/booking_status.html" 
+    context_object_name = "bookings"
+
+    def get_queryset(self):
+        """
+        Return all bookings for tools that belong to the current seller.
+        """
+        # Find tools belonging to this seller
+        seller_tools = Tool.objects.filter(owner=self.request.user.seller)
+        # Return bookings for these tools
+        return (
+            Booking.objects.filter(tool__in=seller_tools)
+            .select_related("tool", "farmer__user")
+            .order_by("-created_at")
+        )
+
+
+class BookingConfirmView(View):
+    def post(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk)
+        booking.status = "confirmed"
+        booking.save()
+        return redirect(reverse("booking-list"))
+
+
+class BookingCancelView(View):
+    def post(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk)
+        booking.status = "cancelled"
+        booking.save()
+        return redirect(reverse("booking-list"))
+
+
+class BookingDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk)
+        booking.delete()
+        messages.success(
+            request, f"Booking for {booking.tool.name} deleted successfully."
+        )
+        return redirect("booking-list")

@@ -21,4 +21,24 @@ urlpatterns = [
     ),
     path("tags/", views.TagListView.as_view(), name="tags-list"),
     path("tags/delete/<int:pk>/", views.TagDeleteView.as_view(), name="tag-delete"),
+    path(
+        "bookings/",
+        views.SellerBookingListView.as_view(),
+        name="booking-list",
+    ),
+    path(
+        "bookings/<int:pk>/confirm/",
+        views.BookingConfirmView.as_view(),
+        name="booking-confirm",
+    ),
+    path(
+        "bookings/<int:pk>/cancel/",
+        views.BookingCancelView.as_view(),
+        name="booking-cancel",
+    ),
+    path(
+        "bookings/<int:pk>/delete/",
+        views.BookingDeleteView.as_view(),
+        name="booking-delete",
+    ),
 ]

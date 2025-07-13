@@ -1,0 +1,128 @@
+{% extends 'assets/seller/seller_dashboard_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Bookings</h4>
+    </div>
+
+    <!-- Success message -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Tool</th>
+                <th>Farmer</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Total Price</th>
+                <th>Delivery</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr data-booking-id="{{ booking.id }}">
+                <td>{{ booking.tool.name }}</td>
+                <td>{{ booking.farmer.user.username }}</td>
+                <td>{{ booking.start_date|date:"Y-m-d H:i" }}</td>
+                <td>{{ booking.end_date|date:"Y-m-d H:i" }}</td>
+                <td>Rs {{ booking.total_price }}</td>
+                <td>{{ booking.delivery_needed|title }}</td>
+                <td>
+                    {% if booking.status == "pending" %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% elif booking.status == "confirmed" %}
+                        <span class="badge bg-success">Confirmed</span>
+                    {% elif booking.status == "cancelled" %}
+                        <span class="badge bg-secondary">Cancelled</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if booking.status == "pending" %}
+                        <form method="post" action="{% url 'booking-confirm' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success me-2">
+                                <i class="fas fa-check"></i> Confirm
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'booking-cancel' booking.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-warning me-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    <!-- Delete Button (opens modal) -->
+                    <button
+                        class="btn btn-sm btn-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal"
+                        data-booking-id="{{ booking.id }}"
+                        data-booking-name="{{ booking.tool.name }}"
+                    >
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">No bookings found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" id="deleteBookingForm">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to <strong>permanently delete</strong> the booking for:
+                    <span class="text-danger fw-bold" id="bookingToolName"></span>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const deleteModal = document.getElementById("deleteModal");
+    const bookingNameSpan = document.getElementById("bookingToolName");
+    const deleteForm = document.getElementById("deleteBookingForm");
+
+    deleteModal.addEventListener("show.bs.modal", function (event) {
+        const button = event.relatedTarget;
+        const bookingId = button.getAttribute("data-booking-id");
+        const bookingName = button.getAttribute("data-booking-name");
+
+        bookingNameSpan.textContent = bookingName;
+        deleteForm.action = `/seller/bookings/${bookingId}/delete/`;
+    });
+});
+</script>
+{% endblock %}

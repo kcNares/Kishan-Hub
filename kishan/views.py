@@ -1,6 +1,7 @@
 import re
+from django.forms import ValidationError
 from django.views import View
-from .forms import ToolReviewForm
+from .forms import BookingForm, ToolReviewForm
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import IntegrityError
@@ -8,9 +9,9 @@ from django.db.models import Avg, Count, Q
 from django.urls import reverse, reverse_lazy
 from django.views.generic import TemplateView
 from accounts.models import Profile
-from .utils import haversine_distance, do_geocode
+from .utils import haversine_distance, do_geocode, is_tool_available
 from geopy.geocoders import Nominatim
-from .models import Tool, Category, SearchQuery, ToolReview
+from .models import Booking, Rental, Tool, Category, SearchQuery, ToolReview
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from .utils import is_sentiment_mismatch, detect_fake_reviews
@@ -100,18 +101,19 @@ class AllToolsView(ListView):
     paginate_by = 8
 
     def get_queryset(self):
-        # Annotate average rating and review count directly in DB query
         queryset = Tool.objects.filter(status="available").annotate(
             reviews_count_annotated=Count("reviews"),
             avg_rating=Avg("reviews__rating"),
         )
-        category_slug = self.request.GET.get("category")
+
+        category_id = self.request.GET.get("category")
         min_price = self.request.GET.get("min_price")
         max_price = self.request.GET.get("max_price")
         sort_by = self.request.GET.get("sort_by")
 
-        if category_slug:
-            queryset = queryset.filter(category__name__iexact=category_slug)
+        # Filter by category using ID
+        if category_id:
+            queryset = queryset.filter(category__id=category_id)
 
         if min_price:
             queryset = queryset.filter(daily_rent_price__gte=min_price)
@@ -119,19 +121,14 @@ class AllToolsView(ListView):
         if max_price:
             queryset = queryset.filter(daily_rent_price__lte=max_price)
 
-        # Convert queryset to list to add custom attributes
+        # Convert to list to add custom attributes
         tools = list(queryset)
 
         for tool in tools:
-            rating = (
-                tool.avg_rating or 0
-            )  # Use actual average rating or 0 if no reviews
+            rating = tool.avg_rating or 0
             tool.rating = round(rating, 1)
-
-            # Assign the annotated reviews count
             tool.reviews_count = getattr(tool, "reviews_count_annotated", 0)
 
-            # Generate star list for template (full, half, empty)
             stars = []
             for i in range(1, 6):
                 if tool.rating >= i:
@@ -142,7 +139,7 @@ class AllToolsView(ListView):
                     stars.append("empty")
             tool.star_list = stars
 
-        # Sort tools based on sort_by parameter
+        # Sorting logic
         if sort_by == "price_asc":
             tools.sort(key=lambda t: t.daily_rent_price)
         elif sort_by == "price_desc":
@@ -546,3 +543,57 @@ class DeleteReviewView(LoginRequiredMixin, UserIsOwnerMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy("tool-detail", kwargs={"pk": self.object.tool.pk})
+
+
+# Bookings and Rent
+class BookingCreateView(LoginRequiredMixin, CreateView):
+    model = Booking
+    form_class = BookingForm
+    template_name = "assets/bookings/booking.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Works for both GET (opening modal) and POST (submitting form)
+        tool_id = self.request.GET.get("tool_id") or self.request.POST.get("tool")
+        tool = None
+        hourly_rate = 0.0
+
+        if tool_id:
+            tool = get_object_or_404(Tool, id=tool_id)
+            if tool.daily_rent_price:
+                hourly_rate = tool.daily_rent_price / 24
+
+            # Check if the user already has a booking for this tool
+            existing_booking = Booking.objects.filter(
+                farmer=self.request.user.profile, tool=tool
+            ).first()
+
+            context["booking"] = existing_booking
+
+        context["tool"] = tool
+        context["hourly_rate"] = hourly_rate
+        return context
+
+    def form_valid(self, form):
+        tool = form.cleaned_data["tool"]
+        farmer = self.request.user.profile
+
+        # Check if an existing booking already exists for this user/tool
+        existing_booking = Booking.objects.filter(farmer=farmer, tool=tool).first()
+
+        if existing_booking:
+            # Optional: show message
+            messages.info(
+                self.request,
+                f"You already have a booking for this tool in '{existing_booking.get_status_display()}' status.",
+            )
+            return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
+
+        form.instance.farmer = farmer
+        form.instance.status = "pending"
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        tool_id = self.object.tool.id
+        return reverse("tool-detail", kwargs={"pk": tool_id})

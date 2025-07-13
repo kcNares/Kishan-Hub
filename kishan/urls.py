@@ -20,4 +20,5 @@ urlpatterns = [
         views.DeleteReviewView.as_view(),
         name="delete-review",
     ),
+    path("booking/create/", views.BookingCreateView.as_view(), name="booking-create"),
 ]

@@ -16,7 +16,7 @@ from django.views.generic import TemplateView
 from seller.models import Seller
 from django.urls import reverse_lazy
 from django.contrib.auth.models import User
-from kishan.models import Tool
+from kishan.models import Booking, Tool
 
 
 class AdminRootRedirectView(View):
@@ -199,15 +199,25 @@ class SellerDashboardView(LoginRequiredMixin, View):
                     if diff.total_seconds() <= 3600:
                         approval_confirmed = True
 
-        # Calculate total tools owned by seller
         total_tools = 0
+        recent_bookings = Booking.objects.none()
+
         if seller:
             total_tools = Tool.objects.filter(owner=seller).count()
+
+            # Get recent bookings for tools owned by this seller
+            # Order by latest start_date or created_at (adjust as needed)
+            recent_bookings = (
+                Booking.objects.filter(tool__owner=seller)
+                .select_related("tool", "farmer__user")
+                .order_by("-start_date")[:5]  # last 5 bookings
+            )
 
         context = {
             "seller": seller,
             "approval_confirmed": approval_confirmed,
-            "total_tools": total_tools,  # <-- Add this
+            "total_tools": total_tools,
+            "recent_bookings": recent_bookings,
         }
 
         return render(request, "assets/seller/seller_dashboard.html", context)
@@ -215,11 +225,10 @@ class SellerDashboardView(LoginRequiredMixin, View):
     def post(self, request):
         seller = getattr(request.user, "seller", None)
 
-        if "confirm_approval" in request.POST:
-            if seller:
-                seller.approval_notification_seen_by_seller = True
-                seller.approval_notification_viewed_at_by_seller = timezone.now()
-                seller.save()
+        if "confirm_approval" in request.POST and seller:
+            seller.approval_notification_seen_by_seller = True
+            seller.approval_notification_viewed_at_by_seller = timezone.now()
+            seller.save()
 
         return redirect("seller-dashboard")
 

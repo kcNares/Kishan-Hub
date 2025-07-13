@@ -17,27 +17,33 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% for booking in recent_bookings %}
                         <tr>
-                            <td>Heavy Duty Tractor</td>
-                            <td>Ram Bahadur</td>
-                            <td>3 days</td>
-                            <td>Rs 7,500</td>
-                            <td><span class="badge bg-success">Active</span></td>
+                            <td>{{ booking.tool.name }}</td>
+                            <td>{{ booking.farmer.user.get_full_name|default:booking.farmer.user.username }}</td>
+                            <td>
+                                {% with duration=booking.end_date|timeuntil:booking.start_date %}
+                                    {{ duration }}
+                                {% endwith %}
+                            </td>
+                            <td>Rs {{ booking.total_price|floatformat:2 }}</td>
+                            <td>
+                                {% if booking.status == "pending" %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif booking.status == "confirmed" %}
+                                    <span class="badge bg-success">Confirmed</span>
+                                {% elif booking.status == "cancelled" %}
+                                    <span class="badge bg-secondary">Cancelled</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ booking.get_status_display }}</span>
+                                {% endif %}
+                            </td>
                         </tr>
+                        {% empty %}
                         <tr>
-                            <td>Combine Harvester</td>
-                            <td>Sita Devi</td>
-                            <td>5 days</td>
-                            <td>Rs 25,000</td>
-                            <td><span class="badge bg-warning">Pending</span></td>
+                            <td colspan="5" class="text-center">No recent bookings found.</td>
                         </tr>
-                        <tr>
-                            <td>Seed Drill</td>
-                            <td>Krishna</td>
-                            <td>2 days</td>
-                            <td>Rs 3,500</td>
-                            <td><span class="badge bg-info">Confirmed</span></td>
-                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>

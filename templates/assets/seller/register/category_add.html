@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block content %}
-
 <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Categories</h4>
@@ -15,14 +14,17 @@
         <thead class="table-light">
             <tr>
                 <th>Category</th>
+                <th>Parent Category</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for category in categories %}
             <tr data-category-id="{{ category.id }}"
-                data-category-name="{{ category.name|escapejs }}">
+                data-category-name="{{ category.name|escapejs }}"
+                data-category-parent-id="{{ category.parent.id|default_if_none:'' }}">
                 <td>{{ category.name }}</td>
+                <td>{% if category.parent %}{{ category.parent.name }}{% else %}-{% endif %}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary btn-edit me-2" type="button">
                         <i class="fas fa-edit"></i> Edit
@@ -45,7 +47,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="2" class="text-center">No categories available.</td>
+                <td colspan="3" class="text-center">No categories available.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -66,8 +68,17 @@
                     <input type="hidden" id="categoryId" name="category_id" value="" />
                     <div class="mb-3">
                         <label for="categoryName" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="categoryName" name="name" placeholder="Add category name..." required />
+                        <input type="text" class="form-control" id="categoryName" name="name" required />
                         <div class="invalid-feedback">Please enter a category name.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parentCategory" class="form-label">Parent Category (optional)</label>
+                        <select class="form-control" id="parentCategory" name="parent">
+                            <option value="">-- None --</option>
+                            {% for parent_category in categories %}
+                                <option value="{{ parent_category.id }}">{{ parent_category.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -108,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('categoryModalLabel');
     const categoryIdInput = document.getElementById('categoryId');
     const categoryNameInput = document.getElementById('categoryName');
+    const parentCategoryInput = document.getElementById('parentCategory');
 
     document.getElementById('btnAddCategory').addEventListener('click', () => {
         modalTitle.textContent = 'Add New Category';
@@ -125,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modalTitle.textContent = 'Edit Category';
             categoryIdInput.value = tr.dataset.categoryId || '';
             categoryNameInput.value = tr.dataset.categoryName || '';
+            parentCategoryInput.value = tr.dataset.categoryParentId || '';
             clearValidation();
             categoryModal.show();
         });
@@ -165,5 +178,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-
 {% endblock %}

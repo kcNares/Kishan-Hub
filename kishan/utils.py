@@ -8,28 +8,40 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from django.db.models import Avg
-from .models import ToolReview
 
 # Initialize sentiment analyzer
 sia = SentimentIntensityAnalyzer()
+
+
+def is_tool_available(tool, start_date, end_date):
+    """
+    Check if the tool is available for a date range.
+    """
+    has_conflict = (
+        tool.rentals.filter(
+            is_active=True,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+        ).exists()
+        or tool.bookings.filter(
+            status="confirmed",
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+        ).exists()
+    )
+    return not has_conflict
 
 
 # 1. Bayesian Average Rating
 # def compute_bayesian_average(tool, m=5):
 #     """
 #     Computes a smoothed rating using Bayesian average to avoid bias from low review counts.
-
-#     Args:
-#         tool: Tool instance
-#         m: minimum reviews threshold weight
-
-#     Returns:
-#         Float: Bayesian average rating
 #     """
+#     from kishan.models import ToolReview
 #     all_reviews = ToolReview.objects.all()
 #     C = all_reviews.aggregate(avg=Avg("rating"))["avg"] or 0  # Global average
-#     v = tool.reviews.count()  # Number of reviews for this tool
-#     R = tool.reviews.aggregate(avg=Avg("rating"))["avg"] or 0  # Tool's average
+#     v = tool.reviews.count()
+#     R = tool.reviews.aggregate(avg=Avg("rating"))["avg"] or 0
 
 #     if v == 0:
 #         return round(C, 1)
@@ -40,19 +52,12 @@ sia = SentimentIntensityAnalyzer()
 
 # 2. Sentiment Mismatch Checker
 def is_sentiment_mismatch(rating, comment):
-    """
-    Detects if the sentiment of the comment does not match the numeric rating.
-
-    Returns:
-        bool: True if mismatch found, else False
-    """
     if not isinstance(comment, str) or not comment.strip():
         return False
 
     sentiment = sia.polarity_scores(comment)
     compound = sentiment["compound"]
 
-    # Example thresholds (tune as needed)
     if rating >= 4 and compound < -0.3:
         return True
     if rating <= 2 and compound > 0.3:
@@ -60,8 +65,10 @@ def is_sentiment_mismatch(rating, comment):
     return False
 
 
-# 3. Fake Review Detector (Per tool or globally)
+# 3. Fake Review Detector
 def detect_fake_reviews(tool=None):
+    from kishan.models import ToolReview
+
     reviews = (
         ToolReview.objects.filter(tool=tool) if tool else ToolReview.objects.all()
     ).order_by("pk")
@@ -72,11 +79,10 @@ def detect_fake_reviews(tool=None):
     for review in reviews:
         if review.rating is not None and review.comment:
             comment = review.comment.strip()
-            sentiment = TextBlob(comment).sentiment.polarity  # -1 to 1
+            sentiment = TextBlob(comment).sentiment.polarity
             length = len(comment)
             stars = review.rating
 
-            # Collect data for ML model
             data.append(
                 {
                     "length": length,
@@ -105,14 +111,10 @@ def detect_fake_reviews(tool=None):
 
         is_nonsense = bool(nonsense_pattern.search(comment))
 
-        # Detect rating-sentiment mismatch:
-        rating_sentiment_conflict = (
-            stars <= 2 and sentiment > 0.5
-        ) or (  # Low star, very positive sentiment
+        rating_sentiment_conflict = (stars <= 2 and sentiment > 0.5) or (
             stars >= 4 and sentiment < -0.3
-        )  # High star, very negative sentiment
+        )
 
-        # Flag if either model or heuristics detect suspicious:
         review.is_flagged = preds[i] == -1 or is_nonsense or rating_sentiment_conflict
 
         print(
@@ -134,16 +136,12 @@ def do_geocode(location_name, geolocator, retries=3):
     return None
 
 
-# haversine formula
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-        Calculate the great-circle distance between two points on Earth.
-        Returns distance in kilometers.
+    Calculate the great-circle distance between two points on Earth in kilometers.
     """
-    # Convert decimal degrees to radians
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
-    # Haversine formula
     dlon = lon2 - lon1
     dlat = lat2 - lat1
     a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2

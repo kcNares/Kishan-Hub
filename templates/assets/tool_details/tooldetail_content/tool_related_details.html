@@ -59,34 +59,7 @@
                             <li><strong>Year:</strong> {% now "Y" %}</li>
                         </ul>
                     </div>
-
-                    <!-- Rental Options -->
-                    <div class="rental-options mb-4">
-                        <h5 class="fw-bold">Rental Duration</h5>
-                        <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="duration" id="daily" value="daily" checked>
-                            <label class="btn btn-outline-success" for="daily">Daily</label>
-                            
-                            <input type="radio" class="btn-check" name="duration" id="weekly" value="weekly">
-                            <label class="btn btn-outline-success" for="weekly">Weekly</label>
-                            
-                            <input type="radio" class="btn-check" name="duration" id="monthly" value="monthly">
-                            <label class="btn btn-outline-success" for="monthly">Monthly</label>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="action-buttons d-flex">
-                        <button class="btn btn-success btn-lg me-3" onclick="rentTool()">
-                          <i class="fas fa-shopping-cart me-2"></i>Rent Now
-                        </button>
-                        <button class="btn btn-outline-success btn-lg me-3" onclick="bookTool()">
-                          <i class="fas fa-calendar-alt me-2"></i>Book for Later
-                        </button>
-                        <button class="btn btn-outline-secondary btn-lg" onclick="addToWishlist()">
-                          <i class="fas fa-heart me-2"></i>Wishlist
-                        </button>
-                    </div>                                                                                    
+                        {% include 'assets/bookings/booking.html' %}                                                                              
                 </div>
             </div>
         </div>
