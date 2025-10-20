@@ -5,6 +5,11 @@
     padding: 0;
 }
 
+.title{
+    color: #49944e;
+    font-size: 22px;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #d0f3da, #ffffff);

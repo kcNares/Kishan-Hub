@@ -11,8 +11,9 @@ from .forms import (
     FarmerRegistrationForm,
     AdminLoginForm,
 )
+from django.core.mail import send_mail, BadHeaderError
+from django.conf import settings
 from .models import Profile
-from django.views.generic import TemplateView
 from seller.models import Seller
 from django.urls import reverse_lazy
 from django.contrib.auth.models import User
@@ -239,37 +240,133 @@ class LogoutView(View):
         return redirect("home")
 
 
+# shop approval after registered by seller
 class RegisteredShopsView(View):
     template_name = (
         "assets/accounts/admin_dashboard/sidebar/registered_approval_shop.html"
     )
 
     def get(self, request):
-        pending_shops = Seller.objects.filter(is_approved=False)
-        approved_shops = Seller.objects.filter(is_approved=True)
-        return render(
-            request,
-            self.template_name,
-            {"pending_shops": pending_shops, "approved_shops": approved_shops},
-        )
+        all_shops = Seller.objects.all().order_by("-id")
+        return render(request, self.template_name, {"all_shops": all_shops})
 
     def post(self, request):
         shop_id = request.POST.get("shop_id")
         action = request.POST.get("action")
 
+        if not shop_id or not action:
+            messages.error(request, "Missing required data.")
+            return redirect("registered-shops")
+
         try:
             seller = Seller.objects.get(id=shop_id)
-            if action == "approve" and not seller.is_approved:
+        except Seller.DoesNotExist:
+            messages.error(request, "Shop not found.")
+            return redirect("registered-shops")
+
+        # APPROVE SHOP (no email)
+        if action == "approve":
+            if seller.is_approved:
+                messages.info(request, "Shop is already approved.")
+            else:
                 seller.is_approved = True
+                seller.status = "approved"
                 seller.approval_notification_seen_by_seller = False
                 seller.approval_notification_viewed_at_by_seller = None
                 seller.save()
-            elif action == "delete":
-                seller.delete()
-        except Seller.DoesNotExist:
-            pass
+                messages.success(request, "Shop approved successfully.")
+            return redirect("registered-shops")
 
-        return redirect("registered-shops")
+        # CANCEL SHOP (no email)
+        elif action == "cancel":
+            if seller.status == "cancelled":
+                messages.info(request, "Shop is already cancelled.")
+            else:
+                seller.status = "cancelled"
+                seller.is_approved = False
+                seller.save()
+                messages.success(request, "Shop cancelled successfully.")
+            return redirect("registered-shops")
+
+        # NOTIFY SHOP (with email based on state)
+        elif action == "notify":
+            if seller.notified:
+                messages.info(request, "Notification already sent to this seller.")
+                return redirect("registered-shops")
+
+            if seller.is_approved and seller.status == "approved":
+                # APPROVED EMAIL
+                subject = "Your Shop Has Been Approved"
+                message = (
+                    f"Dear {seller.full_name},\n\n"
+                    f"Congratulations! Your shop '{seller.shop_name}' has been approved.\n\n"
+                    "Thank you for registering with us.\n\n"
+                    "Best regards,\n"
+                    "KishanHub Team"
+                )
+
+            elif seller.status == "cancelled":
+                # CANCELLED EMAIL - requires reason
+                cancel_reason = request.POST.get("cancel_reason", "").strip()
+                if not cancel_reason:
+                    messages.error(
+                        request,
+                        "Cancellation reason is required to notify the seller.",
+                    )
+                    return redirect("registered-shops")
+
+                subject = "Your Shop Registration Has Been Cancelled"
+                message = (
+                    f"Dear {seller.full_name},\n\n"
+                    f"We regret to inform you that your shop '{seller.shop_name}' registration has been cancelled.\n\n"
+                    f"Reason: {cancel_reason}\n\n"
+                    "If you have any questions, please contact us.\n\n"
+                    "Best regards,\n"
+                    "KishanHub Team"
+                )
+            else:
+                messages.warning(
+                    request,
+                    "Notification is allowed only after shop is approved or cancelled.",
+                )
+                return redirect("registered-shops")
+
+            # Attempt to send email
+            try:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [seller.email])
+                seller.notified = True
+                seller.save()
+                messages.success(request, f"Notification email sent to {seller.email}.")
+            except BadHeaderError:
+                messages.error(request, "Invalid email header. Email not sent.")
+            except Exception as e:
+                messages.error(request, f"Failed to send email: {e}")
+
+            return redirect("registered-shops")
+
+        # DELETE SHOP
+        elif action == "delete":
+            shop_name = seller.shop_name
+            seller.delete()
+            messages.success(request, f"Shop '{shop_name}' deleted successfully.")
+            return redirect("registered-shops")
+
+        else:
+            messages.error(request, "Invalid action.")
+            return redirect("registered-shops")
+
+
+class ShopDocumentsView(View):
+    template_name = "assets/accounts/admin_dashboard/sidebar/show_document.html"
+
+    def get(self, request, shop_id):
+        shop = get_object_or_404(Seller, id=shop_id)
+        documents = shop.documents.all()  # Adjust if your related_name is different
+        context = {
+            "shop": shop,
+            "documents": documents,
+        }
+        return render(request, self.template_name, context)
 
 
 class RegisteredSellersView(View):

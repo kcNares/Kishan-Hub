@@ -36,7 +36,7 @@
                         </p></a>
                         <div class="d-flex justify-content-between align-items-center">
                           <span class="tool-price">Rs {{ tool.daily_rent_price|floatformat:0 }} <small class="text-muted fs-6">/day</small></span>
-                          <a href="#" class="btn btn-success btn-sm">
+                          <a href="{% url 'rent-tool' tool.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-shopping-cart me-1"></i> Rent
                           </a>
                         </div>

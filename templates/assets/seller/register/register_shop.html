@@ -2,126 +2,270 @@
 {% load static %}
 
 {% block content %}
-<style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f4f8;
-      margin: 0;
-      padding: 20px;
-    }
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+  <div class="shop-register-form">
+    <div class="form-title text-center">Shop Registration</div>
 
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background-color: #fff;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    }
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
 
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 30px;
-    }
+      <!-- Owner & Email -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="full_name" class="form-label">Owner's Full Name *</label>
+          <input type="text" class="form-control" id="full_name" name="full_name"
+            value="{{ request.POST.full_name|default:form.initial.full_name|default:'' }}"
+            placeholder="e.g. John Doe" required readonly>
+        </div>
+        <div class="col-md-6">
+          <label for="email" class="form-label">Email *</label>
+          <input type="email" class="form-control" id="email" name="email"
+            value="{{ request.POST.email|default:form.initial.email|default:'' }}"
+            placeholder="e.g. johndoe@example.com" required readonly>
+        </div>
+      </div>
 
-    section {
-      margin-bottom: 30px;
-    }
+      <!-- Phone & Shop Name -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="phone" class="form-label">Phone Number *</label>
+          <input type="tel" class="form-control" id="phone" name="phone"
+            value="{{ request.POST.phone|default:form.initial.phone|default:'' }}"
+            placeholder="e.g. +977-9801234567" required readonly>
+        </div>
+        <div class="col-md-6">
+          <label for="shop_name" class="form-label">Shop Name *</label>
+          <input type="text" class="form-control" id="shop_name" name="shop_name"
+                 value="{{ form.shop_name.value|default:'' }}"
+                 placeholder="e.g. ABC Electronics" required>
+          {% for error in form.shop_name.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
 
-    section h3 {
-      color: #2c3e50;
-      border-bottom: 2px solid #e1e4e8;
-      padding-bottom: 5px;
-      margin-bottom: 20px;
-    }
+      <!-- Address + Map -->
+      <div class="mb-3">
+        <label for="location_name" class="form-label">Shop Address *</label>
+        <div class="position-relative">
+          <textarea class="form-control pe-5" id="location_name" name="location_name"
+            rows="2" readonly required
+            placeholder="Select location from map...">{{ request.POST.location_name|default:'' }}</textarea>
+          <button type="button" class="btn btn-outline-primary position-absolute top-50 end-0 translate-middle-y me-2"
+            id="openMapBtn"
+            style="z-index: 10; width: 38px; height: 38px; padding: 0;">
+            <i class="bi bi-geo-alt-fill" style="font-size: 1.25rem;"></i>
+          </button>
+        </div>
+        {% for error in form.location_name.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
 
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      color: #444;
-    }
+      <!-- Hidden lat/lng -->
+      <input type="hidden" name="latitude" id="latitude" value="{{ request.POST.latitude|default:'' }}">
+      <input type="hidden" name="longitude" id="longitude" value="{{ request.POST.longitude|default:'' }}">
 
-    input, select, textarea {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: border-color 0.3s ease;
-    }
+      <!-- Business Type -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="business_type" class="form-label">Business Type *</label>
+          <select class="form-select" id="business_type" name="business_type" required>
+            <option value="">Choose...</option>
+            <option value="individual" {% if request.POST.business_type == 'individual' %}selected{% endif %}>Individual</option>
+            <option value="partnership" {% if request.POST.business_type == 'partnership' %}selected{% endif %}>Partnership</option>
+            <option value="company" {% if request.POST.business_type == 'company' %}selected{% endif %}>Company</option>
+          </select>
+          {% for error in form.business_type.errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
 
-    input:focus, textarea:focus, select:focus {
-      border-color: #007bff;
-      outline: none;
-    }
+      <!-- Required Documents -->
+      <div class="mb-4">
+        <label for="shopDocuments" class="form-label fw-semibold">Upload Required Documents *</label>
+        <div class="border rounded p-3 bg-light">
+          <input class="form-control mb-2" type="file" id="shopDocuments" name="shopDocuments" multiple required accept=".pdf,.png,.jpg,.jpeg">
+          <div class="small text-muted">
+            <ul class="mb-1 ps-3">
+              <li>Accepted formats: PDF, PNG, JPG, JPEG</li>
+              <li>Maximum file size: <strong>5MB each</strong></li>
+              <li><span class="text-success fw-semibold">Documents must prove valid Nepali citizenship or legal identity</span> to register the shop.</li>
+            </ul>
+          </div>
+        </div>
+        {% for error in form.shopDocuments.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
 
-    textarea {
-      resize: vertical;
-    }
+      <!-- Shop Logo -->
+      <div class="mb-3">
+        <label for="shopLogo" class="form-label">Upload Shop Logo (optional)</label>
+        <input class="form-control" type="file" id="shopLogo" name="shopLogo" accept=".png,.jpg,.jpeg">
+        {% for error in form.shopLogo.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
 
-    .button-group {
-      display: flex;
-      gap: 10px;
-    }
+      <!-- Shop Description (Optional) -->
+      <div class="mb-4">
+        <label for="description" class="form-label">Short Description About Shop (optional)</label>
+        <textarea class="form-control" id="description" name="description" rows="3"
+          placeholder="Write a short description...">{{ request.POST.description|default:'' }}</textarea>
+        {% for error in form.description.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
 
-    .button-group button,
-    .button-group a {
-      flex: 1;
-      padding: 14px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 6px;
-      text-align: center;
-      text-decoration: none;
-      transition: background-color 0.3s ease;
-    }
+      <!-- Submit Buttons -->
+      <div class="d-flex justify-content-center gap-3 mb-4">
+        <button type="submit" class="btn btn-primary">Register Shop</button>
+        <a href="{% url 'seller-dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</main>
 
-    .button-group button {
-      background-color: #28a745;
-      color: white;
-      cursor: pointer;
-    }
-
-    .button-group button:hover {
-      background-color: #218838;
-    }
-
-    .button-group a {
-      background-color: #dc3545;
-      color: white;
-    }
-
-    .button-group a:hover {
-      background-color: #c82333;
-    }
-
-    @media (max-width: 600px) {
-      .container {
-        padding: 20px;
-      }
-
-      h1 {
-        font-size: 22px;
-      }
-
-      section h3 {
-        font-size: 18px;
-      }
-    }
-  </style>
-<div class="container">
-  <h1>Seller Registration</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <div class="button-group">
-      <button type="submit">Register My Shop</button>
-      <a href="{% url 'seller-dashboard' %}">Cancel</a>
+<!--  CUSTOM MAP MODAL -->
+<div id="customMapModal" class="custom-modal">
+  <div class="custom-modal-content">
+    <div class="custom-modal-header">
+      <span>Select Shop Location</span>
+      <button id="closeMapBtn">&times;</button>
     </div>
-  </form>
+    <div class="custom-modal-body">
+      <input id="mapSearchInput" class="form-control mb-3" type="text" placeholder="Search for a place...">
+      <div id="leafletMap" style="height: 450px; width: 100%;"></div>
+      <div class="d-flex justify-content-end mt-3 gap-2">
+        <button id="cancelMapBtn" class="btn btn-secondary">Cancel</button>
+        <button id="selectLocationBtn" class="btn btn-primary" disabled>Select Location</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+  .custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  .custom-modal.show {
+    display: block;
+  }
+  .custom-modal-content {
+    background: #fff;
+    margin: 50px auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 900px;
+    border-radius: 8px;
+  }
+  .custom-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .custom-modal-header button {
+    border: none;
+    background: none;
+    font-size: 24px;
+    cursor: pointer;
+  }
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  let map, marker;
+  let selectedCoords = null;
+  let selectedAddress = null;
+
+  function initLeafletMap() {
+    const defaultCoords = [27.7172, 85.3240];
+    map = L.map('leafletMap').setView(defaultCoords, 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    marker = L.marker(defaultCoords, { draggable: true }).addTo(map);
+
+    function updateCoords(latlng) {
+      selectedCoords = latlng;
+      document.getElementById("selectLocationBtn").disabled = false;
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`)
+        .then(res => res.json())
+        .then(data => {
+          selectedAddress = data.display_name;
+          document.getElementById("mapSearchInput").value = selectedAddress;
+        });
+    }
+
+    marker.on('dragend', () => updateCoords(marker.getLatLng()));
+    map.on('click', (e) => {
+      marker.setLatLng(e.latlng);
+      updateCoords(e.latlng);
+    });
+
+    document.getElementById("mapSearchInput").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        let query = this.value.trim();
+        if (!query) return;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data[0]) {
+              let loc = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+              map.setView(loc, 15);
+              marker.setLatLng(loc);
+              updateCoords({ lat: loc[0], lng: loc[1] });
+            }
+          });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    let initialized = false;
+
+    document.getElementById('openMapBtn').addEventListener('click', () => {
+      document.getElementById('customMapModal').classList.add('show');
+      if (!initialized) {
+        initLeafletMap();
+        initialized = true;
+      } else {
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+    });
+
+    document.getElementById('closeMapBtn').addEventListener('click', () => {
+      document.getElementById('customMapModal').classList.remove('show');
+    });
+
+    document.getElementById('cancelMapBtn').addEventListener('click', () => {
+      document.getElementById('customMapModal').classList.remove('show');
+    });
+
+    document.getElementById('selectLocationBtn').addEventListener('click', () => {
+      if (!selectedAddress || !selectedCoords) {
+        alert("Please select a valid location.");
+        return;
+      }
+      document.getElementById("location_name").value = selectedAddress;
+      document.getElementById("latitude").value = selectedCoords.lat;
+      document.getElementById("longitude").value = selectedCoords.lng;
+      document.getElementById('customMapModal').classList.remove('show');
+    });
+  });
+</script>
 {% endblock %}

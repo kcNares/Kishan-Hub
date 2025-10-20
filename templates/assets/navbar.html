@@ -1,64 +1,123 @@
 <!-- Navigation -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-success fixed-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/">
-            <i class="fas fa-seedling me-2"></i>Kishan Hub
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link active" href="/">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'all-tools' %}">All Tools</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'about' %}">About</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Contact</a>
-                </li>
-            </ul>
-            <div class="d-flex align-items-center">
-                <div class="search-container me-3 position-relative">
-                    <input
-                      type="text"
-                      class="form-control search-input"
-                      placeholder="Search tools..."
-                      id="searchInput"
-                      autocomplete="off"
-                    />
-                    <button class="btn btn-outline-light search-btn" id="searchBtn">
-                      <i class="fas fa-search"></i>
-                    </button>
-                  
-                    <!-- Autocomplete results -->
-                    <ul
-                      class="list-group position-absolute w-100 mt-1 d-none"
-                      id="autocompleteResults"
-                      style="z-index: 9999;"
-                    ></ul>
-                  </div>
-                {% if user.is_authenticated and profile and profile.is_farmer %}
-    <form method="post" action="{% url 'farmer-logout' %}" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">
-            <i class="fas fa-sign-out-alt me-1"></i>Logout
-        </button>
-    </form>
-{% else %}
-    <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#loginModal" type="button">
-        <i class="fas fa-sign-in-alt me-1"></i>Login
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="/">
+      <i class="fas fa-seedling me-2"></i>Kishan Hub
+    </a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+    >
+      <span class="navbar-toggler-icon"></span>
     </button>
-    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#registerModal" type="button">
-        <i class="fas fa-user-plus me-1"></i>Register
-    </button>
-{% endif %}
-            </div>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'all-tools' %}">All Tools</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'about' %}">About</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Contact</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Book & Rent Tools</a>
+        </li>
+      </ul>
+
+      <div class="d-flex align-items-center">
+        <!-- Search bar -->
+        <div class="search-container me-3 position-relative">
+          <input
+            type="text"
+            class="form-control search-input"
+            placeholder="Search tools..."
+            id="searchInput"
+            autocomplete="off"
+          />
+          <button class="btn btn-outline-light search-btn" id="searchBtn">
+            <i class="fas fa-search"></i>
+          </button>
+          <ul
+            class="list-group position-absolute w-100 mt-1 d-none"
+            id="autocompleteResults"
+            style="z-index: 9999;"
+          ></ul>
         </div>
+
+        {% if user.is_authenticated and profile and profile.is_farmer %}
+          <!-- Logout -->
+          <form
+            method="post"
+            action="{% url 'farmer-logout' %}"
+            class="d-inline me-3"
+          >
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-sign-out-alt me-1"></i>Logout
+            </button>
+          </form>
+
+          <!-- Notifications -->
+          <div class="me-3">
+            <button
+              class="btn btn-outline-light position-relative"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="fas fa-bell"></i>
+              {% if unread_notifications_count > 0 %}
+                <span
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                >
+                  {{ unread_notifications_count }}
+                  <span class="visually-hidden">unread notifications</span>
+                </span>
+              {% endif %}
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% if unread_notifications %}
+                {% for notif in unread_notifications %}
+                  <li>
+                    <a class="dropdown-item" href="{% url 'notification-redirect' notif.id %}">
+                      {{ notif.message }}
+                    </a>
+                  </li>
+                {% endfor %}
+              {% else %}
+                <li class="dropdown-item text-muted">No new notifications.</li>
+              {% endif %}
+            </ul>
+          </div>
+        {% else %}
+          <!-- Guest: Login/Register -->
+          <button
+            class="btn btn-outline-light me-2"
+            data-bs-toggle="modal"
+            data-bs-target="#loginModal"
+            type="button"
+          >
+            <i class="fas fa-sign-in-alt me-1"></i>Login
+          </button>
+          <button
+            class="btn btn-light"
+            data-bs-toggle="modal"
+            data-bs-target="#registerModal"
+            type="button"
+          >
+            <i class="fas fa-user-plus me-1"></i>Register
+          </button>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </nav>
-    

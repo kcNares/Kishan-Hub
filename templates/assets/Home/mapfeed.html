@@ -1,0 +1,98 @@
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+/>
+
+<style>
+  .map-container {
+    max-width: 1000px;
+    margin: 50px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .map-container h3 {
+    color: #222;
+    margin-bottom: 20px;
+    font-weight: 500;
+    font-size: 18px;
+  }
+
+  #map {
+    width: 100%;
+    height: 500px;
+    border-radius: 8px;
+  }
+</style>
+
+<div class="map-container">
+  <h3>Shop Locations</h3>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var shops = {{ shops|safe }};
+    var userLat = {{ user_lat|default:"null" }};
+    var userLon = {{ user_lon|default:"null" }};
+
+    var defaultLat = 27.7;
+    var defaultLon = 85.3;
+
+    // Center map on user if available, else default
+    var mapCenter = (userLat && userLon) ? [userLat, userLon] : [defaultLat, defaultLon];
+    var map = L.map("map").setView(mapCenter, 11);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution:
+        '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Add user location marker if available
+    if (userLat && userLon) {
+      L.marker([userLat, userLon], {
+        icon: L.icon({
+          iconUrl:
+            "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -28],
+        }),
+      })
+        .addTo(map)
+        .bindPopup("You are here!")
+        .openPopup();
+    }
+
+    // Add shop markers with distance
+    shops.forEach(function (shop) {
+      var popupContent = `<strong>${shop.shop_name}</strong><br>${shop.location_name}`;
+      if (shop.distance_km !== null) {
+        popupContent += `<br><span style="color:green; font-weight:bold;">${shop.distance_km} km away</span>`;
+      }
+      L.marker([shop.latitude, shop.longitude]).addTo(map).bindPopup(popupContent);
+    });
+  });
+
+  // JS to get user location and reload page with lat/lon params
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      // Reload page with lat/lon as GET parameters if not already set
+      const url = new URL(window.location);
+      if (!url.searchParams.get("lat") || !url.searchParams.get("lon")) {
+        url.searchParams.set("lat", lat);
+        url.searchParams.set("lon", lon);
+        window.location.href = url.toString();
+      }
+    });
+  }
+</script>

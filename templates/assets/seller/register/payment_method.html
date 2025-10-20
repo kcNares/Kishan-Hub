@@ -1,0 +1,143 @@
+{% extends 'assets/seller/seller_dashboard_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Payments</h4>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Tool</th>
+                <th>Farmer</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Total Price</th>
+                <th>Delivery</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rental in rentals %}
+            <tr data-rental-id="{{ rental.id }}">
+                <td>{{ rental.tool.name }}</td>
+                <td>{{ rental.farmer.user.username }}</td>
+                <td>{{ rental.start_date|date:"Y-m-d H:i" }}</td>
+                <td>{{ rental.end_date|date:"Y-m-d H:i" }}</td>
+                <td>Rs {{ rental.total_price }}</td>
+                <td>{{ rental.delivery_needed|title }}</td>
+
+                <!-- Payment Method -->
+                <td>
+                    {% if rental.payment_method == "esewa" %}
+                        Online Payment
+                    {% elif rental.payment_method == "cash" %}
+                        Cash on Delivery
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
+                <!-- Status -->
+                <td>
+                    {% if rental.payment_method == "esewa" %}
+                        <span class="badge bg-success">Paid</span>
+                    {% elif rental.payment_method == "cash" %}
+                        {% if rental.status == "pending" %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% elif rental.status == "paid" %}
+                            <span class="badge bg-success">Paid</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge bg-secondary">Unknown</span>
+                    {% endif %}
+                </td>
+
+                <!-- Actions -->
+                <td>
+                    {% if rental.payment_method == "cash" and rental.status == "pending" %}
+                        <form method="post" action="{% url 'mark-paid' rental.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success me-2">
+                                <i class="fas fa-check"></i> Mark as Paid
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    <!-- Delete Button -->
+                    <button
+                        class="btn btn-sm btn-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal"
+                        data-rental-id="{{ rental.id }}"
+                        data-rental-name="{{ rental.tool.name }}"
+                    >
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center">No rental/payment records found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" id="deleteRentalForm">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to <strong>permanently delete</strong> the rental for:
+                    <span class="text-danger fw-bold" id="rentalToolName"></span>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const deleteModal = document.getElementById("deleteModal");
+    const rentalNameSpan = document.getElementById("rentalToolName");
+    const deleteForm = document.getElementById("deleteRentalForm");
+
+    deleteModal.addEventListener("show.bs.modal", function (event) {
+        const button = event.relatedTarget;
+        const rentalId = button.getAttribute("data-rental-id");
+        const rentalName = button.getAttribute("data-rental-name");
+
+        rentalNameSpan.textContent = rentalName;
+        // Dynamically set form action using Django URL template tag
+        deleteForm.action = `{% url 'delete-rental' 0 %}`.replace('0', rentalId);
+    });
+});
+</script>
+
+{% endblock %}

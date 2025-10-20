@@ -285,3 +285,114 @@ body {
         margin-left: 0 !important;
     }
 }
+
+/* ============================= */
+/* SHOP REGISTRATION FORM STYLE */
+/* ============================= */
+
+.shop-register-form {
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.shop-register-form .form-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.shop-register-form .form-label {
+  font-weight: 600;
+  color: #333333;
+}
+
+.shop-register-form .form-control,
+.shop-register-form .form-select {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  font-size: 15px;
+  transition: all 0.3s ease-in-out;
+}
+
+.shop-register-form .form-control:focus,
+.shop-register-form .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.shop-register-form input[type="file"]::file-selector-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #0d6efd;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.shop-register-form input[type="file"]::file-selector-button:hover {
+  background-color: #0b5ed7;
+}
+
+.shop-register-form textarea {
+  resize: vertical;
+}
+
+.shop-register-form .form-text {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.shop-register-form .btn-primary {
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 10px;
+}
+
+.shop-register-form .btn-outline-secondary {
+  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: 10px;
+}
+
+.shop-register-form .btn-group-center {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.shop-register-form .btn-group-center .btn {
+  margin: 0 10px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .shop-register-form {
+    padding: 20px;
+  }
+
+  .shop-register-form .form-title {
+    font-size: 24px;
+  }
+
+  .shop-register-form .btn-group-center {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shop-register-form .btn-group-center .btn {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+.shop-register-form input::placeholder,
+.shop-register-form textarea::placeholder {
+  color: #adb5bd;
+  font-size: 14px;
+}

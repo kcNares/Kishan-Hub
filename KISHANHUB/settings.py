@@ -68,6 +68,7 @@ TEMPLATES = [
                 # add
                 "accounts.context_processors.profile_processor",
                 "seller.context_processors.seller_context",
+                "kishan.context_processors.notifications",
             ],
         },
     },
@@ -141,3 +142,38 @@ LOGIN_REDIRECT_URL = "/"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# DEFAULT_FROM_EMAIL = "kishanhub123@gmail.com"
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "sandbox.smtp.mailtrap.io"
+EMAIL_PORT = 587  # You can also use 2525 or 25, but 587 is preferred for STARTTLS
+EMAIL_HOST_USER = "62cae6da74eeb3"  # your Mailtrap username
+EMAIL_HOST_PASSWORD = "6c419ec84bfac4"  # your full Mailtrap password
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = "nareshkumarkc.077@kathford.edu.np"
+
+
+# ===================== eSewa Payment Gateway =====================
+
+ESEWA_ENV = "uat"  # 'uat' or 'prod'
+
+# UAT endpoints
+ESEWA_EPAY_URL = "https://rc-epay.esewa.com.np/epay/main"   # POST form
+ESEWA_STATUS_URL = "https://rc.esewa.com.np/api/epay/transaction/status/"
+
+# Production endpoints
+# ESEWA_EPAY_URL = "https://epay.esewa.com.np/api/epay/main/v2/form"
+# ESEWA_STATUS_URL = "https://epay.esewa.com.np/api/epay/transaction/status/"
+
+ESEWA_PRODUCT_CODE = os.environ.get("ESEWA_PRODUCT_CODE", "EPAYTEST")
+ESEWA_SECRET_KEY = os.environ.get("ESEWA_SECRET_KEY", "8gBm/:&EnhH.1/q")
+
+ESEWA_SUCCESS_URL = os.environ.get(
+    "ESEWA_SUCCESS_URL", "https://127.0.0.1:8000/kishan/esewa/success/"
+)
+ESEWA_FAILURE_URL = os.environ.get(
+    "ESEWA_FAILURE_URL", "https://127.0.0.1:8000/kishan/esewa/failure/"
+)

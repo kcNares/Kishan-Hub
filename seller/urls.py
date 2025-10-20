@@ -41,4 +41,11 @@ urlpatterns = [
         views.BookingDeleteView.as_view(),
         name="booking-delete",
     ),
+    path("payments/", views.SellerPaymentListView.as_view(), name="payments-list"),
+    path(
+        "payments/<int:pk>/mark-paid/",
+        views.MarkPaymentPaidView.as_view(),
+        name="mark-paid",
+    ),
+    path("rentals/<int:pk>/delete/", views.DeleteRentalView.as_view(), name="delete-rental"),
 ]

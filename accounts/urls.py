@@ -12,7 +12,8 @@ from .views import (
     RegisteredShopsView,
     SellerDashboardView,
     SellerLoginView,
-    SellerRegisterView)
+    SellerRegisterView,
+    ShopDocumentsView)
 
 urlpatterns = [
     # Admin
@@ -24,6 +25,11 @@ urlpatterns = [
         "admin/registered-shops/",
         RegisteredShopsView.as_view(),
         name="registered-shops",
+    ),
+    path(
+        "shops/<int:shop_id>/documents/",
+        ShopDocumentsView.as_view(),
+        name="shop_documents_view",
     ),
     path(
         "registered-sellers/",

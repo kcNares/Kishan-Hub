@@ -1,0 +1,79 @@
+{% extends 'assets/accounts/admin_dashboard/admin_dashboard_base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<style>
+  .doc-card {
+    transition: box-shadow 0.3s ease;
+  }
+  .doc-card:hover {
+    box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.15);
+  }
+  .doc-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .doc-preview {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 0.25rem;
+    object-fit: contain;
+  }
+  .back-button-container {
+    margin-top: 1.25rem; /* gap below owner name */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="container my-5">
+
+  <h2 class="mb-1 text-primary fw-bold">Documents for Shop: <span class="text-dark">{{ shop.shop_name }}</span></h2>
+  <h5 class="text-secondary">Seller Name: {{ shop.full_name }}</h5>
+
+  <div class="back-button-container">
+    <a href="{% url 'registered-shops' %}" class="btn btn-outline-secondary px-4 py-2 fw-semibold">
+      &larr; Back to Shops List
+    </a>
+  </div>
+
+  {% if documents %}
+    <div class="row g-4 mt-4">
+      {% for doc in documents %}
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm doc-card h-100">
+            <div class="card-body d-flex flex-column">
+              <h6 class="card-title doc-title fw-semibold mb-3" title="{{ doc.document.name }}">
+                {{ doc.document.name|truncatechars:50 }}
+              </h6>
+
+              {% if doc.document.url %}
+                {% with ext=doc.document.name|slice:"-4:"|lower %}
+                  {% if ext == ".pdf" %}
+                    <object data="{{ doc.document.url }}" type="application/pdf" class="doc-preview" aria-label="PDF Document Preview" style="height: 400px;">
+                      <p>Your browser does not support PDF preview. <a href="{{ doc.document.url }}" target="_blank" rel="noopener noreferrer">Download</a></p>
+                    </object>
+                  {% elif ext in ".jpg .png .gif .jpeg" %}
+                    <img src="{{ doc.document.url }}" alt="{{ doc.document.name }}" class="doc-preview img-fluid border rounded mb-3">
+                  {% else %}
+                    <a href="{{ doc.document.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary mt-auto align-self-center" style="min-width: 180px;">
+                      <i class="fas fa-download me-2"></i> Download File
+                    </a>
+                  {% endif %}
+                {% endwith %}
+              {% else %}
+                <p class="text-muted">No file available</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted fs-5 text-center my-5">No documents uploaded for this shop.</p>
+  {% endif %}
+</section>
+{% endblock %}

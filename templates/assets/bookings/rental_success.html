@@ -1,0 +1,111 @@
+{% extends 'assets/base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8 col-sm-10">
+
+      <!-- Success Icon -->
+      <div class="text-center mb-4">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:4rem;"></i>
+      </div>
+
+      <!-- Title & Message -->
+      <div class="text-center mb-4">
+        <h2 class="fw-bold text-success">{{ title }}</h2>
+        <p class="text-muted fs-6">{{ message }}</p>
+      </div>
+
+      <!-- Rental Summary Card -->
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-success text-white rounded-top-4">
+          <h5 class="mb-0">Rental Summary</h5>
+        </div>
+        <div class="card-body">
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Tool:</div>
+            <div class="col-6 text-end">{{ rental.tool.name }}</div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Start Date:</div>
+            <div class="col-6 text-end">{{ rental.start_date|date:"Y-m-d H:i" }}</div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">End Date:</div>
+            <div class="col-6 text-end">{{ rental.end_date|date:"Y-m-d H:i" }}</div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Delivery:</div>
+            <div class="col-6 text-end">{{ rental.delivery_needed|title }}</div>
+          </div>
+
+          {% if rental.delivery_needed == 'yes' %}
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Delivery Address:</div>
+            <div class="col-6 text-end">{{ rental.delivery_address }}</div>
+          </div>
+          {% endif %}
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Total Bill:</div>
+            <div class="col-6 text-end">Rs {{ rental.total_price }}</div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Payment Method:</div>
+            <div class="col-6 text-end">
+              {% if rental.payment_method == 'esewa' %}
+                <span class="badge bg-primary">eSewa</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Cash on Delivery</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Status:</div>
+            <div class="col-6 text-end">
+              {% if rental.status == 'pending' %}
+                <span class="badge bg-warning text-dark">{{ rental.status|title }}</span>
+              {% elif rental.status == 'paid' %}
+                <span class="badge bg-success">{{ rental.status|title }}</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ rental.status|title }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Progress Indicator -->
+          <div class="progress mt-3" style="height:6px;">
+            {% if rental.status == 'pending' %}
+              <div class="progress-bar bg-warning" role="progressbar" style="width:50%"></div>
+            {% elif rental.status == 'paid' %}
+              <div class="progress-bar bg-success" role="progressbar" style="width:100%"></div>
+            {% endif %}
+          </div>
+
+          <!-- Action Button -->
+          <div class="text-center mt-4">
+            <a href="{% url 'tool-detail' rental.tool.id %}" class="btn btn-success btn-lg rounded-pill px-4">
+              Back to Tool Details
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Optional Tip Card -->
+      <div class="card mt-4 shadow-sm border-0 rounded-4">
+        <div class="card-body text-center text-muted small">
+          Tip: You can check your rentals and payments.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,115 +1,276 @@
 {% extends 'assets/accounts/admin_dashboard/admin_dashboard_base.html' %}
+{% load static %}
+{% load file_filters %}
 
 {% block extra_head %}
-<!-- Bootstrap 5 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Font Awesome -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<style>
+  .btn-group-sm > .btn {
+    margin-right: 0.3rem;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="container-fluid table-section mt-4">
-
+<section class="container-fluid mt-4">
   <h2 class="mb-4 text-primary fw-bold">Total Shops Registered</h2>
 
-  {% if message %}
-    <div class="alert alert-{{ message_tag }} alert-dismissible fade show shadow-sm" role="alert">
+  {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
       <i class="fas fa-info-circle me-2"></i> {{ message }}
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    {% endfor %}
+  </div>
   {% endif %}
 
-  <!-- Pending Shops -->
-  <div class="card mb-5 shadow-sm border-0">
-    <div class="card-header bg-warning-subtle fw-semibold fs-5 border-bottom">
-      <i class="fas fa-hourglass-half me-2 text-warning"></i> Shops Pending Approval
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light fw-semibold fs-5 border-bottom">
+      <i class="fas fa-store me-2 text-primary"></i> Shops List
     </div>
     <div class="card-body p-0">
       <table class="table table-hover table-striped align-middle mb-0">
-        <thead class="table-warning text-dark">
+        <thead class="table-primary text-dark">
           <tr>
             <th>#</th>
             <th>Seller</th>
             <th>Shop</th>
             <th>Location</th>
+            <th>Seller Documents</th>
+            <th>Notification</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {% for shop in pending_shops %}
+          {% for shop in all_shops %}
           <tr>
             <td>{{ forloop.counter }}</td>
             <td class="fw-medium">{{ shop.full_name }}</td>
             <td>{{ shop.shop_name }}</td>
-            <td><span class="badge bg-light text-dark">{{ shop.location_name }}</span></td>
+            <td>
+              {% if shop.location_name %}
+                {{ shop.location_name|truncatechars:20 }}
+              {% else %}
+                <span class="text-muted">N/A</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if shop.documents.count %}
+                <a href="{% url 'shop_documents_view' shop.id %}">
+                  View Documents
+                </a>
+              {% else %}
+                <span class="text-muted">No docs</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if shop.notified %}
+              <button class="btn btn-sm btn-secondary" disabled>
+                <i class="fas fa-check-circle"></i> Notified
+              </button>
+              {% else %}
+                {% if shop.is_approved %}
+                  <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#notifyApproveModal{{ shop.id }}">
+                    <i class="fas fa-envelope"></i> Notify
+                  </button>
+                {% elif shop.status == 'cancelled' %}
+                  <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#notifyCancelModal{{ shop.id }}">
+                    <i class="fas fa-envelope"></i> Notify
+                  </button>
+                {% else %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                    <input type="hidden" name="action" value="notify">
+                    <button type="submit" class="btn btn-sm btn-info text-white">
+                      <i class="fas fa-envelope"></i> Notify
+                    </button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            </td>
             <td class="text-end">
-              <form method="post" class="d-inline" onsubmit="return confirm('Approve this shop?');">
-                {% csrf_token %}
-                <input type="hidden" name="shop_id" value="{{ shop.id }}">
-                <button name="action" value="approve" class="btn btn-success btn-sm me-1">
-                  <i class="fas fa-check"></i> Approve
-                </button>
-              </form>
-              <form method="post" class="d-inline" onsubmit="return confirm('Delete this shop?');">
-                {% csrf_token %}
-                <input type="hidden" name="shop_id" value="{{ shop.id }}">
-                <button name="action" value="delete" class="btn btn-danger btn-sm">
+              <div class="btn-group-sm">
+                {% if shop.is_approved %}
+                  <button class="btn btn-outline-success" disabled>
+                    <i class="fas fa-check-circle"></i> Approved
+                  </button>
+                {% elif shop.status == 'cancelled' %}
+                  <button class="btn btn-outline-secondary" disabled>
+                    Cancelled
+                  </button>
+                {% else %}
+                  <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ shop.id }}">
+                    <i class="fas fa-check"></i> Approve
+                  </button>
+                  <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#cancelModal{{ shop.id }}">
+                    Cancel
+                  </button>
+                {% endif %}
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ shop.id }}">
                   <i class="fas fa-trash-alt"></i> Delete
                 </button>
-              </form>
+              </div>
+
+              <!-- Approve Modal -->
+              <div class="modal fade" id="approveModal{{ shop.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                      <input type="hidden" name="action" value="approve">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Confirm Approval</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        Approve <strong>{{ shop.shop_name }}</strong> registered by <strong>{{ shop.full_name }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button>
+                        <button class="btn btn-success" type="submit">Confirm</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cancel Modal -->
+              <div class="modal fade" id="cancelModal{{ shop.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                      <input type="hidden" name="action" value="cancel">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Cancel Shop Registration</h5>
+                        <button class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        Are you sure you want to cancel registration for <strong>{{ shop.shop_name }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button>
+                        <button type="submit" class="btn btn-warning">Confirm</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Delete Modal -->
+              <div class="modal fade" id="deleteModal{{ shop.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                      <input type="hidden" name="action" value="delete">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Delete Shop</h5>
+                        <button class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        Are you sure you want to delete <strong>{{ shop.shop_name }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button>
+                        <button class="btn btn-danger" type="submit">Confirm</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notify Approve Modal -->
+              <div class="modal fade" id="notifyApproveModal{{ shop.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                      <input type="hidden" name="action" value="notify">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Send Approval Notification</h5>
+                        <button class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        Send an approval notification email to <strong>{{ shop.full_name }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button>
+                        <button class="btn btn-primary" type="submit">Send Email</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notify Cancel Modal -->
+              <div class="modal fade" id="notifyCancelModal{{ shop.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                  <div class="modal-content border-0 shadow-sm">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                      <input type="hidden" name="action" value="notify">
+
+                      <div class="modal-header bg-light border-bottom">
+                        <h5 class="modal-title text-danger fw-semibold">
+                          <i class="fas fa-envelope me-2"></i> Send Cancellation Email
+                        </h5>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+
+                      <div class="modal-body">
+                        <p class="text-muted mb-3">
+                          You are about to send a cancellation notice to <strong>{{ shop.full_name }}</strong> regarding the shop <strong>{{ shop.shop_name }}</strong>.
+                        </p>
+
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label class="form-label fw-medium"><i class="fas fa-user me-1"></i> Recipient</label>
+                            <input type="text" class="form-control" value="{{ shop.full_name }}" readonly>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label fw-medium"><i class="fas fa-envelope me-1"></i> Email Address</label>
+                            <input type="text" class="form-control" value="{{ shop.email|default:'Not Provided' }}" readonly>
+                          </div>
+                        </div>
+
+                        <div class="mb-3">
+                          <label class="form-label fw-medium"><i class="fas fa-comment-alt me-1"></i> Cancellation Message</label>
+                          <textarea name="cancel_reason" class="form-control" rows="5" placeholder="Please provide a brief reason for cancellation (this will be included in the email)." required></textarea>
+                        </div>
+                      </div>
+
+                      <div class="modal-footer bg-light border-top">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                          <i class="fas fa-arrow-left me-1"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                          <i class="fas fa-paper-plane me-1"></i> Send Email
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" class="text-center text-muted py-3">No shops awaiting approval.</td></tr>
+          <tr><td colspan="7" class="text-center py-4 text-muted">No shops registered.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
-
-  <!-- Approved Shops -->
-  <div class="card shadow-sm border-0">
-    <div class="card-header bg-success-subtle fw-semibold fs-5 border-bottom">
-      <i class="fas fa-check-circle me-2 text-success"></i> Approved Shops
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-hover table-striped align-middle mb-0">
-        <thead class="table-success text-dark">
-          <tr>
-            <th>#</th>
-            <th>Seller</th>
-            <th>Shop</th>
-            <th>Location</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for shop in approved_shops %}
-          <tr>
-            <td>{{ forloop.counter }}</td>
-            <td class="fw-medium">{{ shop.full_name }}</td>
-            <td>{{ shop.shop_name }}</td>
-            <td><span class="badge bg-light text-dark">{{ shop.location_name }}</span></td>
-            <td class="text-end">
-              <button class="btn btn-outline-success btn-sm me-1" disabled>
-                <i class="fas fa-check-circle"></i> Approved
-              </button>
-              <form method="post" class="d-inline" onsubmit="return confirm('Delete this approved shop?');">
-                {% csrf_token %}
-                <input type="hidden" name="shop_id" value="{{ shop.id }}">
-                <button name="action" value="delete" class="btn btn-danger btn-sm">
-                  <i class="fas fa-trash"></i> Delete
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5" class="text-center text-muted py-3">No approved shops.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
 </section>
+{% endblock %}
+
+{% block extra_js %}
 {% endblock %}

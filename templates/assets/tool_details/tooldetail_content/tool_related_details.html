@@ -1,67 +1,87 @@
 {% load tz %}
-<!-- Tool Details Section -->
+
 <section class="py-5 mt-5">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="tool-image-container">
-                    <img src="{{ tool.image.url }}" alt="Tool" class="img-fluid rounded shadow" id="toolImage">
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="tool-details">
-                    <h1 class="display-5 fw-bold text-success mb-3" id="toolName">{{ tool.name }}</h1>
-                    
-                    <!-- Rating -->
-                    <div class="rating mb-3">
-                        <div class="stars">
-                            {% for star in star_list %}
-                                {% if star == "full" %}
-                                    <i class="fas fa-star text-warning"></i>
-                                {% elif star == "half" %}
-                                    <i class="fas fa-star-half-alt text-warning"></i>
-                                {% else %}
-                                    <i class="far fa-star text-warning"></i>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                        <span class="ms-2 text-muted">({{ average_rating }}/5 - {{ reviews.count }} reviews)</span>
-                    </div>
+  <div class="container">
+    <div class="row">
 
-                    <!-- Price -->
-                    <div class="price-section mb-4">
-                        <h3 class="text-success fw-bold">Rs {{ tool.daily_rent_price|floatformat:0 }} <small class="text-muted fs-6">/day</small></h3>
-                        <p class="text-muted">Weekly: Rs {{ weekly_price }} | Monthly: Rs {{ monthly_price }}</p>
-                    </div>
+      <!-- Tool Image -->
+      <div class="col-lg-6 mb-4">
+        <img src="{{ tool.image.url }}" alt="{{ tool.name }}" class="img-fluid rounded shadow">
+      </div>
 
-                    <!-- Description -->
-                    <div class="description mb-4">
-                        <h5 class="fw-bold">Description</h5>
-                        {% if tool.tags.all %}
-                        <div class="mb-3">
-                            {% for tag in tool.tags.all %}
-                            <span class="badge bg-success me-1">{{ tag.name }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        <p class="text-muted">
-                            {{ tool.description }}
-                        </p>
-                    </div>
+      <!-- Tool Details -->
+      <div class="col-lg-6">
+        <h1 class="display-5 fw-bold text-success mb-3">{{ tool.name }}</h1>
 
-                    <!-- Specifications -->
-                    <div class="specifications mb-4">
-                        <h5 class="fw-bold">More Details</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Shop Name:</strong> {{ tool.owner.shop_name }}</li>
-                            <li><strong>Shop Location:</strong> {{ tool.owner.location_name }}</li>
-                            <li><strong>Contact No.:</strong> {{ tool.owner.phone }}</li>
-                            <li><strong>Year:</strong> {% now "Y" %}</li>
-                        </ul>
-                    </div>
-                        {% include 'assets/bookings/booking.html' %}                                                                              
-                </div>
-            </div>
+        <!-- Ratings -->
+        <div class="rating mb-3">
+          {% for star in star_list %}
+            {% if star == "full" %}
+              <i class="fas fa-star text-warning"></i>
+            {% elif star == "half" %}
+              <i class="fas fa-star-half-alt text-warning"></i>
+            {% else %}
+              <i class="far fa-star text-warning"></i>
+            {% endif %}
+          {% endfor %}
+          <span class="ms-2 text-muted">({{ average_rating }}/5 - {{ reviews.count }} reviews)</span>
         </div>
+
+        <!-- Price -->
+        <div class="price-section mb-4">
+          <h3 class="text-success fw-bold">
+            Rs {{ tool.daily_rent_price|floatformat:0 }}
+            <small class="text-muted fs-6">/day</small>
+          </h3>
+          <p class="text-muted">
+            Weekly: Rs {{ weekly_price }} | Monthly: Rs {{ monthly_price }}
+          </p>
+        </div>
+
+        <!-- Description & Tags -->
+        <div class="description mb-4">
+          <h5 class="fw-bold">Description</h5>
+          {% if tool.tags.all %}
+            {% for tag in tool.tags.all %}
+              <span class="badge bg-success me-1">{{ tag.name }}</span>
+            {% endfor %}
+          {% endif %}
+          <p class="text-muted">{{ tool.description }}</p>
+        </div>
+
+        <!-- Specifications -->
+        <div class="specifications mb-4">
+          <h5 class="fw-bold">More Details</h5>
+          <ul class="list-unstyled">
+            <li><strong>Registered Seller Username:</strong> {{ tool.owner.user.username }}</li>
+            <li><strong>Shop Name:</strong> {{ tool.owner.shop_name }}</li>
+            <li><strong>Shop Location:</strong> {{ tool.owner.location_name }}</li>
+            <li><strong>Contact No.:</strong> {{ tool.owner.phone }}</li>
+            <li><strong>Year:</strong> {% now "Y" %}</li>
+          </ul>
+        </div>
+
+        <!-- Tool Status -->
+        <div class="specifications mb-4">
+          <h5 class="fw-bold">Tool Status</h5>
+          <ul class="list-unstyled">
+            {% for status in tool_status_list %}
+              <li>
+                <span class="badge bg-{{ status.badge }} me-1">
+                  {{ status.label }}
+                  {% if status.start_date and status.end_date %}
+                    ({{ status.start_date|date:"Y-m-d H:i" }} &mdash; {{ status.end_date|date:"Y-m-d H:i" }})
+                  {% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Booking Form -->
+        {% include 'assets/bookings/booking.html' %}
+
+      </div>
     </div>
+  </div>
 </section>

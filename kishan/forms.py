@@ -1,8 +1,10 @@
 from django import forms
 from kishan.models import ToolReview
-from django.forms import DateTimeInput
+from django.forms import DateTimeInput, HiddenInput
 from kishan.utils import is_tool_available
-from .models import Booking
+from .models import Booking, Rental
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 class ToolReviewForm(forms.ModelForm):
@@ -88,6 +90,16 @@ class BookingForm(forms.ModelForm):
             "total_price": forms.HiddenInput(attrs={"id": "id_total_price"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # If farmer is logged in, fill initial address
+        if self.user and hasattr(self.user, "profile"):
+            farmer_address = self.user.profile.location
+            if farmer_address:
+                self.fields["delivery_address"].initial = farmer_address
+
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get("start_date")
@@ -95,12 +107,68 @@ class BookingForm(forms.ModelForm):
         tool = cleaned_data.get("tool")
 
         if start_date and end_date and tool:
+            now = timezone.now()
+            if start_date < now:
+                raise ValidationError("Start date must be in the future.")
+
             if end_date <= start_date:
-                raise forms.ValidationError("End date must be after start date.")
+                raise ValidationError("End date must be after start date.")
 
             if not is_tool_available(tool, start_date, end_date):
-                raise forms.ValidationError(
-                    "Tool is not available for the selected dates."
+                raise ValidationError("Tool is not available for the selected dates.")
+
+        return cleaned_data
+
+
+class RentalForm(forms.ModelForm):
+    # Optional extend date for existing rentals
+    extend_date = forms.DateTimeField(
+        required=False,
+        widget=DateTimeInput(attrs={"type": "datetime-local"}),
+        help_text="Optional: Extend rental beyond current end date",
+    )
+
+    class Meta:
+        model = Rental
+        fields = [
+            "tool",
+            "start_date",
+            "end_date",
+            "extend_date",
+            "delivery_needed",
+            "delivery_address",
+            "total_price",
+            "delivery_charge",
+            "payment_method",
+        ]
+        widgets = {
+            "start_date": DateTimeInput(attrs={"type": "datetime-local"}),
+            "end_date": DateTimeInput(attrs={"type": "datetime-local"}),
+            "delivery_address": forms.Textarea(attrs={"rows": 2}),
+            "total_price": HiddenInput(),
+            "delivery_charge": HiddenInput(),
+            "payment_method": HiddenInput(),
+            "tool": HiddenInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        extend_date = cleaned_data.get("extend_date")
+
+        # Validate normal rental
+        if start_date and end_date and end_date <= start_date:
+            self.add_error("end_date", "End date must be after start date.")
+
+        # Validate extension
+        if extend_date:
+            if not end_date:
+                self.add_error("extend_date", "Cannot set extension without end date.")
+            elif extend_date <= end_date:
+                self.add_error(
+                    "extend_date",
+                    "Extension date must be after current end date and time.",
                 )
 
         return cleaned_data

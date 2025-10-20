@@ -1,0 +1,322 @@
+{% extends 'assets/base.html' %}
+{% load static %}
+{% block content %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* ---------- Compact, professional rental page ---------- */
+.container { max-width: 1100px; }
+.rent-hero { border:1px solid #eef1f4; background:#f9fbfd; border-radius:1rem; padding:1rem 1.25rem; margin-bottom:1.5rem;}
+.brand-chip{background:#f4f6f8;border:1px solid #e7ebf0;padding:.25rem .5rem;border-radius:999px;font-size:.82rem;font-weight:600;color:#44515f}
+.rating-pill{display:inline-flex;align-items:center;gap:.35rem;background:#0d6efd10;border:1px solid #0d6efd30;color:#0d6efd;padding:.2rem .45rem;border-radius:999px;font-weight:600;font-size:.82rem}
+.price-lg{font-size:1.35rem;font-weight:800;letter-spacing:.2px}
+.soft{color:#6c757d}
+.img-cover{width:100%; border-radius:.75rem; object-fit:cover; max-height:240px; background:#f6f8fa; border:1px solid #eef1f4}
+.summary-card{position:sticky; top:1.25rem; border:1px solid #e7ebf0; background:#fff; border-radius:1rem; padding:1rem; box-shadow:0 6px 20px rgba(20,30,50,0.04)}
+.summary-row{display:flex;justify-content:space-between;align-items:center;margin:.45rem 0}
+.divider{height:1px;background:#eef1f4;margin:.9rem 0}
+.pay-btn{display:flex;align-items:center;gap:.6rem;justify-content:center;font-weight:700;padding:.7rem 1rem;border-radius:.65rem}
+.pay-btn img{height:20px}
+.form-section{background:#fff;border:1px solid #eef1f4;padding:1rem;border-radius:.75rem;box-shadow:0 4px 12px rgba(15,20,40,0.02)}
+#leafletMap{width:100%; height:400px; border-radius:.5rem; border:1px solid #ddd;}
+@media (max-width:991px){ .img-cover{max-height:200px} .summary-card{position:static;margin-top:1rem} }
+</style>
+
+<div class="container py-5">
+  <!-- Header -->
+  <div class="rent-hero d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <span class="brand-chip">{{ tool.category.name|default:"Tool" }}</span>
+      <span class="rating-pill"><i class="bi bi-star-fill"></i> {{ tool.avg_rating|default:"N/A" }}/5</span>
+    </div>
+    <div class="text-end">
+      <div class="soft small">Daily rate</div>
+      <div class="price-lg">Rs {{ tool.daily_rent_price|default:"0.00" }}</div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- LEFT: image + form -->
+    <div class="col-lg-7">
+      <div class="form-section">
+        <div class="row g-3">
+          <div class="col-12">
+            <img src="{% if tool.image %}{{ tool.image.url }}{% else %}{% static 'images/tool-placeholder.png' %}{% endif %}" 
+                 alt="{{ tool.name }}" class="img-cover mb-3">
+            <h4 class="mb-1">{{ tool.name }}</h4>
+            <div class="soft mb-2">Seller: <strong>{{ tool.owner.full_name|default:tool.owner.user.username }}</strong></div>
+            {% if tool.mrp %}<div class="soft strike mb-2">Rs {{ tool.mrp }}</div>{% endif %}
+            <div class="soft small mb-3">Flexible hourly billing under 24h</div>
+          </div>
+
+          <div class="col-12">
+            <!-- FORM -->
+            <form id="rentForm" method="post" action="{% url 'rent-tool' tool.id %}" class="needs-validation" novalidate>
+              {% csrf_token %}
+              <input type="hidden" name="tool" value="{{ tool.id }}">
+              <input type="hidden" name="total_price" id="id_total_price" value="0.00">
+              <input type="hidden" name="delivery_charge" id="id_delivery_charge" value="0.00">
+              <input type="hidden" name="payment_method" id="id_payment_method" value="">
+
+              {% if tool_status_list.0.label == "Available" %}
+                <!-- Normal rental flow -->
+                <div class="mb-3">
+                  <label for="start_date" class="form-label">Start Date & Time</label>
+                  <input id="start_date" name="start_date" type="datetime-local" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                  <label for="end_date" class="form-label">End Date & Time</label>
+                  <input id="end_date" name="end_date" type="datetime-local" class="form-control" required>
+                  <div class="invalid-feedback">End date/time is required and must be after start.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="id_delivery_needed" class="form-label">Delivery option</label>
+                  <select id="id_delivery_needed" name="delivery_needed" class="form-select">
+                    <option value="no" selected>No — I'll pick up</option>
+                    <option value="yes">Yes — deliver to my address</option>
+                  </select>
+                </div>
+
+                <!-- Delivery address wrapper -->
+                <div class="mb-3 d-none" id="deliveryAddressWrap">
+                  <label class="form-label">Delivery Address</label>
+                  <div class="input-group mb-2">
+                    <input type="text" id="delivery_address" name="delivery_address" class="form-control" placeholder="Selected location will appear here" readonly>
+                    <button type="button" class="btn btn-outline-primary" id="openMapBtn">
+                      <i class="bi bi-geo-alt-fill"></i> Pick Location
+                    </button>
+                  </div>
+                </div>
+
+              {% else %}
+                <!-- Extension flow -->
+                <div class="mb-3">
+                  <label class="form-label">Current Rental</label>
+                  <input type="datetime-local" class="form-control mb-2" 
+                         value="{{ tool_status_list.0.start_date|date:'Y-m-d\\TH:i' }}" readonly>
+                  <input type="datetime-local" class="form-control" 
+                         value="{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}" readonly>
+                </div>
+
+                {% if user.id == tool_status_list.0.renter_id %}
+                  <!-- Current renter can extend -->
+                  <div class="mb-3">
+                    <label for="extend_date" class="form-label">Extend Rental Until</label>
+                    <input id="extend_date" name="extend_date" type="datetime-local" class="form-control" required>
+                    <div class="form-text small text-muted">Must be after current End Date & Time.</div>
+                  </div>
+                {% endif %}
+                <!-- Delivery option hidden for all in extension -->
+              {% endif %}
+
+              <div class="d-grid mt-3">
+                {% if tool_status_list.0.label == "Available" %}
+                  <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
+                    <i class="bi bi-calendar-check"></i> Continue to Payment
+                  </button>
+                {% elif user.id == tool_status_list.0.renter_id %}
+                  <!-- Current renter can extend -->
+                  <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
+                    <i class="bi bi-calendar-check"></i> Continue to Payment
+                  </button>
+                {% else %}
+                  <!-- Other farmers: no button/message -->
+                {% endif %}
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: summary + payment -->
+    <div class="col-lg-5">
+      <div id="summaryContainer" class="summary-card" style="display:none;">
+        <div class="summary-row">
+          <div class="small soft">Rental</div>
+          <div id="durationLabel">—</div>
+        </div>
+        <div class="summary-row">
+          <div>Daily rate</div>
+          <div>Rs {{ tool.daily_rent_price|default:"0.00" }}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="summary-row">
+          <div>Delivery</div>
+          <div>Rs <span id="deliveryChargeDisplay">{{ tool.delivery_charge|floatformat:2 }}</span></div>
+        </div>
+        <div class="summary-row">
+          <div>Subtotal</div>
+          <div>Rs <span id="subtotalDisplay">0.00</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="summary-row">
+          <strong>Total</strong>
+          <strong>Rs <span id="totalPriceDisplay">0.00</span></strong>
+        </div>
+
+        <div class="mt-3">
+          <button id="payAndRentBtn" type="button" class="btn btn-success pay-btn w-100">
+            <img src="{% static 'assets/img/e-sewa.jpg' %}" alt="eSewa"> Pay with eSewa
+          </button>
+          <button id="codBtn" type="button" class="btn btn-outline-dark pay-btn w-100 mt-2">
+            <i class="bi bi-cash-coin"></i> Cash on Delivery
+          </button>
+        </div>
+        <div class="soft mt-3 small">Secure payments powered by eSewa. You can choose cash at delivery.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// --- JS remains unchanged ---
+const elStart = document.getElementById('start_date');
+const elEnd = document.getElementById('end_date');
+const elExtend = document.getElementById('extend_date');
+const elDelivery = document.getElementById('id_delivery_needed');
+const deliveryWrap = document.getElementById('deliveryAddressWrap');
+const summaryContainer = document.getElementById('summaryContainer');
+const elDeliveryChargeDisplay = document.getElementById('deliveryChargeDisplay');
+const durationLabel = document.getElementById('durationLabel');
+const subtotalDisplay = document.getElementById('subtotalDisplay');
+const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+const elTotalHidden = document.getElementById('id_total_price');
+const elDeliveryHidden = document.getElementById('id_delivery_charge');
+const hiddenPM = document.getElementById('id_payment_method');
+const payAndRentBtn = document.getElementById('payAndRentBtn');
+const codBtn = document.getElementById('codBtn');
+const btnRentNow = document.getElementById('btnRentNow');
+
+const dailyRate = parseFloat("{{ tool.daily_rent_price|default:'0' }}") || 0;
+const baseDelivery = parseFloat("{{ tool.delivery_charge|default:'0' }}") || 0;
+
+function fmt(n){ return isNaN(n)?"0.00":n.toFixed(2); }
+function parseLocalDateTime(input){
+    if(!input) return NaN;
+    const parts = input.split(/[-T:]/);
+    return new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4]);
+}
+function toggleDeliveryUI(){ 
+    if(elDelivery?.value==='yes'){ deliveryWrap.classList.remove('d-none'); } 
+    else{ deliveryWrap.classList.add('d-none'); } 
+    computePricing(); 
+}
+function showFieldError(input, message){
+    let error = input.nextElementSibling;
+    if(!error || !error.classList.contains("text-danger")){
+        error = document.createElement("div");
+        error.classList.add("text-danger","mt-1","small");
+        input.insertAdjacentElement("afterend", error);
+    }
+    error.textContent = message;
+    input.classList.add("is-invalid");
+}
+function clearFieldError(input){
+    let error = input.nextElementSibling;
+    if(error && error.classList.contains("text-danger")){ error.remove(); }
+    input.classList.remove("is-invalid");
+}
+function computePricing(){
+    const deliveryNeeded = elDelivery?.value==='yes';
+    const deliveryCharge = deliveryNeeded ? baseDelivery : 0;
+    let subtotal=0, durationText='—';
+    {% if tool_status_list.0.label == "Available" %}
+        const s = parseLocalDateTime(elStart.value);
+        const e = parseLocalDateTime(elEnd.value);
+        if(!isNaN(s) && !isNaN(e) && e>s){
+            const diffHrs = (e-s)/(1000*60*60);
+            const hourly = dailyRate/24;
+            if(diffHrs <= 24){
+                subtotal = Math.min(dailyRate, hourly*diffHrs);
+                durationText = diffHrs<24?`${diffHrs.toFixed(1)} hrs`:'1 day';
+            } else {
+                const fd=Math.floor(diffHrs/24), rem=diffHrs%24;
+                subtotal = (fd*dailyRate)+Math.min(dailyRate, rem*hourly);
+                durationText=`${fd} day${fd>1?'s':''} ${rem.toFixed(1)} hrs`;
+            }
+        }
+    {% else %}
+        const currentEnd = parseLocalDateTime("{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}");
+        if(elExtend && elExtend.value){
+            const ex = parseLocalDateTime(elExtend.value);
+            if(!isNaN(ex) && ex>currentEnd){
+                const diffHrsExt = (ex-currentEnd)/(1000*60*60);
+                const hourly = dailyRate/24;
+                if(diffHrsExt <=24){ subtotal = Math.min(dailyRate, hourly*diffHrsExt); }
+                else { 
+                    const fd=Math.floor(diffHrsExt/24), rem=diffHrsExt%24;
+                    subtotal = (fd*dailyRate)+Math.min(dailyRate, rem*hourly);
+                }
+                durationText = `Extension: +${diffHrsExt.toFixed(1)} hrs`;
+            } else { durationText = "Invalid extension"; subtotal = 0; }
+        }
+    {% endif %}
+    const total = subtotal + deliveryCharge;
+    durationLabel.textContent = durationText;
+    elDeliveryChargeDisplay.textContent = fmt(deliveryCharge);
+    subtotalDisplay.textContent = fmt(subtotal);
+    totalPriceDisplay.textContent = fmt(total);
+    elTotalHidden.value = fmt(total);
+    elDeliveryHidden.value = fmt(deliveryCharge);
+}
+
+btnRentNow?.addEventListener('click',()=>{
+    const form = document.getElementById('rentForm');
+    if(!form.checkValidity()){ form.classList.add('was-validated'); return; }
+    let valid = true;
+    {% if tool_status_list.0.label == "Available" %}
+        const s = parseLocalDateTime(elStart.value);
+        const e = parseLocalDateTime(elEnd.value);
+        if(isNaN(s) || isNaN(e) || e<=s){ showFieldError(elEnd,"End Date & Time must be after Start Date & Time."); valid=false; } 
+        else { clearFieldError(elEnd); }
+    {% else %}
+        const currentEnd = parseLocalDateTime("{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}");
+        if(elExtend && elExtend.value){
+            const ex = parseLocalDateTime(elExtend.value);
+            if(isNaN(ex) || ex<=currentEnd){ showFieldError(elExtend,"Extension must be after current End Date & Time."); valid=false; } 
+            else { clearFieldError(elExtend); }
+        } else { showFieldError(elExtend,"Please select an extension date and time."); valid=false; }
+    {% endif %}
+    if(!valid) return;
+    computePricing();
+    summaryContainer.style.display='block';
+    summaryContainer.scrollIntoView({behavior:'smooth',block:'center'});
+});
+
+payAndRentBtn?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if(document.querySelector(".is-invalid")) return;
+    hiddenPM.value='esewa';
+    document.getElementById('rentForm').requestSubmit();
+});
+codBtn?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if(document.querySelector(".is-invalid")) return;
+    hiddenPM.value='cash';
+    document.getElementById('rentForm').requestSubmit();
+});
+
+elDelivery?.addEventListener('change',()=>{ toggleDeliveryUI(); computePricing(); });
+elEnd?.addEventListener('change',()=>{ computePricing(); });
+if(elExtend){
+    elExtend.addEventListener('change',()=>{
+        const currentEnd = parseLocalDateTime("{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}");
+        const ex = parseLocalDateTime(elExtend.value);
+        if(!isNaN(ex) && ex<=currentEnd){ showFieldError(elExtend,"Extension must be after current End Date & Time."); elExtend.value=""; return; }
+        else { clearFieldError(elExtend); }
+        computePricing();
+    });
+}
+
+computePricing();
+toggleDeliveryUI();
+</script>
+
+{% endblock %}
