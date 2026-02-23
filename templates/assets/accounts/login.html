@@ -53,16 +53,19 @@
       <!-- Password -->
       <div class="form-group">
         <label for="{{ form.password.id_for_label }}">Password</label>
-        <div class="input-group">
+        <div class="input-group password-group">
           <span class="input-icon">🔒</span>
           {{ form.password }}
+          <!-- Eye icon -->
+          <span class="toggle-password" id="togglePassword">👁</span>
         </div>
+
         {% if form.password.errors %}
-          <div class="error">
-            {% for error in form.password.errors %}
-              {{ error }}<br />
-            {% endfor %}
-          </div>
+        <div class="error">
+          {% for error in form.password.errors %}
+            {{ error }}<br />
+          {% endfor %}
+        </div>
         {% endif %}
       </div>
 
@@ -76,7 +79,7 @@
       {% endif %}
 
       <div class="forgot-password">
-        <a href="#">Forgot Password?</a>
+        <a href="{% url 'password_reset' %}?role={{ request.resolver_match.url_name|slice:":-6" }}">Forgot Password?</a>
       </div>
 
       <button type="submit" class="login-btn">
@@ -109,20 +112,41 @@
   </div>
 
   <script>
-    // Auto-hide messages after 5 seconds
-    document.addEventListener('DOMContentLoaded', () => {
-      const messagesContainer = document.getElementById('messages-container');
-      if (messagesContainer) {
+  document.addEventListener('DOMContentLoaded', function () {
+
+    /* ===============================
+       Auto-hide messages (5 seconds)
+    =============================== */
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+      setTimeout(() => {
+        messagesContainer.style.opacity = '0';
         setTimeout(() => {
-          // Fade out opacity
-          messagesContainer.style.opacity = '0';
-          // Then hide the container completely after transition
-          setTimeout(() => {
-            messagesContainer.style.display = 'none';
-          }, 500);
-        }, 5000); // 5000 ms = 5 seconds
-      }
-    });
+          messagesContainer.style.display = 'none';
+        }, 500);
+      }, 5000);
+    }
+
+
+    /* ===============================
+       Password Toggle
+    =============================== */
+    const togglePassword = document.getElementById("togglePassword");
+    const passwordField = document.querySelector(".password-group input");
+
+    if (togglePassword && passwordField) {
+      togglePassword.addEventListener("click", function () {
+        if (passwordField.type === "password") {
+          passwordField.type = "text";
+          this.textContent = "🙈";
+        } else {
+          passwordField.type = "password";
+          this.textContent = "👁";
+        }
+      });
+    }
+
+  });
   </script>
 </body>
 </html>

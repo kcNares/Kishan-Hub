@@ -47,5 +47,30 @@ urlpatterns = [
         views.MarkPaymentPaidView.as_view(),
         name="mark-paid",
     ),
-    path("rentals/<int:pk>/delete/", views.DeleteRentalView.as_view(), name="delete-rental"),
+    path(
+        "rentals/<int:pk>/delete/",
+        views.DeleteRentalView.as_view(),
+        name="delete-rental",
+    ),
+    path("reviews/", views.SellerReviewListView.as_view(), name="seller_reviews"),
+    path(
+        "reviews/<int:pk>/reply/",
+        views.SellerReplyCreateView.as_view(),
+        name="seller_reply_create",
+    ),
+    path(
+        "reviews/<int:pk>/reply/update/",
+        views.SellerReplyUpdateView.as_view(),
+        name="seller_reply_update",
+    ),
+    path(
+        "reviews/<int:pk>/reply/delete/",
+        views.SellerReplyDeleteView.as_view(),
+        name="seller_reply_delete",
+    ),
+    path(
+        "reviews/<int:pk>/delete/",
+        views.SellerReviewDeleteView.as_view(),
+        name="seller_review_delete",
+    ),
 ]

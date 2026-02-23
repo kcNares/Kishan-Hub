@@ -33,7 +33,6 @@
             <th>Username</th>
             <th>Email</th>
             <th>Phone</th>
-            <th>Location</th>
             <th>Last Login</th>
             <th class="text-end">Actions</th>
           </tr>
@@ -45,7 +44,6 @@
             <td class="fw-medium">{{ farmer.username }}</td>
             <td>{{ farmer.email }}</td>
             <td>{{ farmer.profile.phone }}</td>
-            <td>{{ farmer.profile.location|default:"-" }}</td>
             <td>{{ farmer.last_login|date:"Y-m-d H:i" }}</td>
             <td class="text-end">
               <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently delete this farmer?');">

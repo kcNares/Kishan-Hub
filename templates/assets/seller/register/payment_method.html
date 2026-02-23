@@ -12,7 +12,7 @@
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                 {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         {% endfor %}
     {% endif %}
@@ -25,20 +25,47 @@
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>Total Price</th>
+                <th>Extended End Date</th>
+                <th>Extended Cost</th>
                 <th>Delivery</th>
                 <th>Payment Method</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
         </thead>
+
         <tbody>
             {% for rental in rentals %}
             <tr data-rental-id="{{ rental.id }}">
+
                 <td>{{ rental.tool.name }}</td>
+
                 <td>{{ rental.farmer.user.username }}</td>
+
                 <td>{{ rental.start_date|date:"Y-m-d H:i" }}</td>
+
                 <td>{{ rental.end_date|date:"Y-m-d H:i" }}</td>
+
                 <td>Rs {{ rental.total_price }}</td>
+
+                <!-- New Extended End Date Column -->
+                <td>
+                    {% if rental.extend_date %}
+                        {{ rental.extend_date|date:"Y-m-d H:i" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
+                <!-- New Extended Cost Column -->
+                <td>
+                    {% if rental.extend_price %}
+                        Rs {{ rental.extend_price }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
                 <td>{{ rental.delivery_needed|title }}</td>
 
                 <!-- Payment Method -->
@@ -78,7 +105,6 @@
                         </form>
                     {% endif %}
 
-                    <!-- Delete Button -->
                     <button
                         class="btn btn-sm btn-danger"
                         data-bs-toggle="modal"
@@ -88,11 +114,12 @@
                     >
                         <i class="fas fa-trash"></i> Delete
                     </button>
+
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9" class="text-center">No rental/payment records found.</td>
+                <td colspan="11" class="text-center">No rental/payment records found.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -100,18 +127,18 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="post" id="deleteRentalForm">
             {% csrf_token %}
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to <strong>permanently delete</strong> the rental for:
-                    <span class="text-danger fw-bold" id="rentalToolName"></span>?
+                    Are you sure you want to permanently delete the rental for:
+                    <strong class="text-danger" id="rentalToolName"></strong>?
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -134,7 +161,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const rentalName = button.getAttribute("data-rental-name");
 
         rentalNameSpan.textContent = rentalName;
-        // Dynamically set form action using Django URL template tag
         deleteForm.action = `{% url 'delete-rental' 0 %}`.replace('0', rentalId);
     });
 });

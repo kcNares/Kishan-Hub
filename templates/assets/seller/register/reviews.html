@@ -1,0 +1,84 @@
+{% extends 'assets/seller/seller_dashboard_base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+
+    <h3 class="mb-3">Farmer Reviews</h3>
+
+    {% if messages %}
+        {% for msg in messages %}
+            <div class="alert alert-info">{{ msg }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% for r in reviews %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between">
+                    <strong>{{ r.farmer.user.get_full_name }}</strong>
+                    <span class="badge bg-warning text-dark">⭐ {{ r.rating }}/5</span>
+                </div>
+
+                <p class="mt-2">{{ r.comment }}</p>
+                <small class="text-muted">
+                    {{ r.created_at|date:"d M Y h:i A" }}
+                </small>
+
+                <hr>
+
+                {% if r.reply %}
+                    <div class="alert alert-info p-2 mb-2">
+                        <strong>Your Reply:</strong> {{ r.reply }}
+                    </div>
+
+                    <!-- EDIT REPLY -->
+                    <form method="post" action="{% url 'seller_reply_update' r.id %}" class="mb-2">
+                        {% csrf_token %}
+                        <div class="d-flex">
+                            <input type="text" name="reply"
+                                   value="{{ r.reply }}"
+                                   class="form-control me-2" required>
+                            <button class="btn btn-primary btn-sm">Edit</button>
+                        </div>
+                    </form>
+
+                    <!-- DELETE REPLY -->
+                    <form method="post" action="{% url 'seller_reply_delete' r.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-warning btn-sm mb-2"
+                                onclick="return confirm('Delete this reply?')">
+                            Delete Reply
+                        </button>
+                    </form>
+
+                {% else %}
+                    <!-- FIRST TIME REPLY -->
+                    <form method="post" action="{% url 'seller_reply_create' r.id %}" class="d-flex mb-2">
+                        {% csrf_token %}
+                        <input type="text" name="reply" class="form-control me-2" placeholder="Reply..." required>
+                        <button class="btn btn-success btn-sm">Reply</button>
+                    </form>
+                {% endif %}
+
+                <!-- DELETE REVIEW -->
+                <a href="{% url 'seller_review_delete' r.id %}"
+                   onclick="return confirm('Delete entire review?')"
+                   class="btn btn-danger btn-sm">
+                    Delete Review
+                </a>
+
+            </div>
+        </div>
+
+    {% empty %}
+        <div class="alert alert-info">
+            No reviews found.
+        </div>
+    {% endfor %}
+
+</div>
+
+{% endblock content %}

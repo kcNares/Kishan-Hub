@@ -245,3 +245,19 @@ body {
         font-size: 1.4em;
     }
 }
+/* ===== Password Toggle ===== */
+.password-group {
+    position: relative;
+}
+
+.toggle-password {
+    cursor: pointer;
+    font-size: 1.1em;
+    color: #5aa36f;
+    margin-left: 8px;
+    transition: color 0.3s;
+}
+
+.toggle-password:hover {
+    color: #26734d;
+}

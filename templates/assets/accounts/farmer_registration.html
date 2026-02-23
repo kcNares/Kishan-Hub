@@ -81,24 +81,13 @@
             {% endif %}
         </div>
 
-        <!-- NEW LOCATION FIELD -->
-        <div class="form-group">
-            <label for="location">Location</label>
-            <div class="input-group">
-                <span class="input-icon">📍</span>
-                <input type="text" id="location" name="location" placeholder="You must add your current location." value="{{ form.location.value|default:'' }}" required>
-            </div>
-            {% if form.location.errors %}
-                <small>{{ form.location.errors.0 }}</small>
-            {% endif %}
-        </div>
-
         <div class="form-row">
             <div class="form-group">
                 <label for="password">Password</label>
-                <div class="input-group">
+                <div class="input-group password-group">
                     <span class="input-icon">🔒</span>
                     <input type="password" id="password" name="password" placeholder="Create password" required>
+                    <span class="toggle-password" data-target="password">👁</span>
                 </div>
                 {% if form.password.errors %}
                     <small>{{ form.password.errors.0 }}</small>
@@ -106,9 +95,10 @@
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <div class="input-group">
+                <div class="input-group password-group">
                     <span class="input-icon">🔒</span>
                     <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm password" required>
+                    <span class="toggle-password" data-target="confirmPassword">👁</span>
                 </div>
                 {% if form.confirm_password.errors %}
                     <small>{{ form.confirm_password.errors.0 }}</small>
@@ -139,5 +129,29 @@
       <p>Already have an account? <a href="#">Login here</a></p>
     </div>
   </div>
+  
+  <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* Password Toggle for Multiple Fields */
+    const toggles = document.querySelectorAll(".toggle-password");
+
+    toggles.forEach(toggle => {
+        toggle.addEventListener("click", function () {
+            const targetId = this.getAttribute("data-target");
+            const input = document.getElementById(targetId);
+
+            if (input.type === "password") {
+                input.type = "text";
+                this.textContent = "🙈";
+            } else {
+                input.type = "password";
+                this.textContent = "👁";
+            }
+        });
+    });
+
+});
+</script>
 </body>
 </html>

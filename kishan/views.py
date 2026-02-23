@@ -12,7 +12,7 @@ from django.forms import ValidationError
 from django.views import View
 from django.utils.timezone import now
 from seller.models import Seller
-from .forms import BookingForm, RentalForm, ToolReviewForm
+from .forms import BookingForm, RentalForm, ToolReviewForm, ContactForm
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.db import IntegrityError
@@ -39,9 +39,11 @@ from django.views.generic import (
     TemplateView,
     CreateView,
     DeleteView,
-    DetailView
+    DetailView,
+    FormView,
 )
 logger = logging.getLogger(__name__)
+from .recommender import recommend_tools
 
 
 # Create your views here.
@@ -78,24 +80,98 @@ class HomeView(ListView):
 
         return qs
 
+    # ---------------------------
+    # Context for recommended tools + shops
+    # ---------------------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        user = self.request.user
+        recommended_qs = []
 
-        # Recommended tools logic
-        recommended_qs = (
-            Tool.objects.filter(status="available")
-            .annotate(
-                reviews_count_annotated=Count("reviews"),
+        # ---------------------------
+        # Popularity (most rented)
+        # ---------------------------
+        popularity = {
+            r["tool_id"]: r["cnt"]
+            for r in Rental.objects.values("tool_id").annotate(cnt=Count("id"))
+        }
+
+        if (
+            user.is_authenticated
+            and hasattr(user, "profile")
+            and user.profile.is_farmer
+        ):
+            profile = user.profile
+            user_tools = Tool.objects.filter(rentals__farmer=profile).distinct()
+
+            all_tools = Tool.objects.filter(status="available").annotate(
                 avg_rating=Avg("reviews__rating"),
+                reviews_count_annotated=Count("reviews"),
+                popularity=Count("rentals"),
             )
-            .order_by("-created_at")[:4]
-        )
+
+            tool_scores = []
+            for tool in all_tools:
+                score = 0
+
+                # Similar category
+                if tool.category_id in user_tools.values_list("category_id", flat=True):
+                    score += 3
+
+                # Rating + review count
+                score += (tool.avg_rating or 0) * 2.0
+                score += (tool.reviews_count_annotated or 0) * 0.5
+
+                # Popularity
+                score += tool.popularity * 1.2
+
+                tool_scores.append((score, tool))
+
+            tool_scores.sort(key=lambda x: x[0], reverse=True)
+            recommended_qs = [tool for _, tool in tool_scores[:4]]
+
+        if not recommended_qs:
+            rated_tools = list(
+                Tool.objects.filter(
+                    status="available",
+                    reviews__rating__isnull=False,
+                )
+                .annotate(
+                    avg_rating=Avg("reviews__rating"),
+                    reviews_count_annotated=Count("reviews"),
+                    popularity=Count("rentals"),
+                )
+                .order_by(
+                    "-avg_rating",
+                    "-reviews_count_annotated",
+                    "-popularity",
+                )
+                .distinct()[:4]
+            )
+
+            if len(rated_tools) < 4:
+                remaining = 4 - len(rated_tools)
+                extra = list(
+                    Tool.objects.filter(status="available")
+                    .exclude(id__in=[t.id for t in rated_tools])
+                    .annotate(popularity=Count("rentals"))
+                    .order_by("-popularity")[:remaining]
+                )
+                rated_tools.extend(extra)
+
+            recommended_qs = rated_tools
+
         for tool in recommended_qs:
-            rating = tool.avg_rating or 0
+            rating = getattr(tool, "avg_rating", 0) or 0
             tool.rating = round(rating, 1)
             tool.rating_int = round(rating)
-            tool.reviews_count = tool.reviews_count_annotated or 0
 
+            tool.reviews_count_runtime = (
+                getattr(tool, "reviews_count_annotated", 0)
+                or ToolReview.objects.filter(tool=tool).count()
+            )
+
+            # star icons
             stars = []
             for i in range(1, 6):
                 if rating >= i:
@@ -104,12 +180,39 @@ class HomeView(ListView):
                     stars.append("half")
                 else:
                     stars.append("empty")
-            tool.star_list = stars
+            tool.star_list_runtime = stars
+
+            # badges
+            badges = []
+
+            # Only show "Similar Category" if farmer has rented tools
+            if (
+                user.is_authenticated
+                and hasattr(user, "profile")
+                and user.profile.is_farmer
+            ):
+                user_tools = Tool.objects.filter(
+                    rentals__farmer=user.profile
+                ).distinct()
+
+                if user_tools.exists():  # must have rented at least one tool
+                    if tool.category_id in user_tools.values_list(
+                        "category_id", flat=True
+                    ):
+                        badges.append("Similar Category")
+
+            # existing unchanged logic
+            if rating >= 4.5:
+                badges.append("Top Rated")
+
+            if popularity.get(tool.id, 0) >= 5:
+                badges.append("Most Rented")
+
+            tool.badges = badges
 
         context["recommended_tools"] = recommended_qs
         context["stars_range"] = range(1, 6)
 
-        # Get lat/lon from GET params (sent from browser via JS)
         try:
             user_lat = float(self.request.GET.get("lat"))
             user_lon = float(self.request.GET.get("lon"))
@@ -118,42 +221,32 @@ class HomeView(ListView):
             user_lon = None
 
         shops = Seller.objects.filter(latitude__isnull=False, longitude__isnull=False)
-
         shops_with_distance = []
-        if user_lat is not None and user_lon is not None:
-            for shop in shops:
-                dist = haversine_distance(
-                    user_lat, user_lon, shop.latitude, shop.longitude
-                )
-                shops_with_distance.append(
-                    {
-                        "id": shop.id,
-                        "shop_name": shop.shop_name,
-                        "location_name": shop.location_name,
-                        "latitude": shop.latitude,
-                        "longitude": shop.longitude,
-                        "distance_km": round(dist, 2),
-                    }
-                )
-            # Optionally sort by distance
+
+        for shop in shops:
+            dist = (
+                haversine_distance(user_lat, user_lon, shop.latitude, shop.longitude)
+                if user_lat and user_lon
+                else None
+            )
+            shops_with_distance.append(
+                {
+                    "id": shop.id,
+                    "shop_name": shop.shop_name,
+                    "location_name": shop.location_name,
+                    "latitude": shop.latitude,
+                    "longitude": shop.longitude,
+                    "distance_km": round(dist, 2) if dist else None,
+                }
+            )
+
+        if user_lat and user_lon:
             shops_with_distance.sort(key=lambda x: x["distance_km"])
-        else:
-            # No user location: distance is None
-            for shop in shops:
-                shops_with_distance.append(
-                    {
-                        "id": shop.id,
-                        "shop_name": shop.shop_name,
-                        "location_name": shop.location_name,
-                        "latitude": shop.latitude,
-                        "longitude": shop.longitude,
-                        "distance_km": None,
-                    }
-                )
 
         context["shops"] = shops_with_distance
         context["user_lat"] = user_lat
         context["user_lon"] = user_lon
+
         return context
 
 
@@ -294,129 +387,7 @@ class ToolAutocompleteView(View):
                 .distinct()[:10]
             )
         return JsonResponse(list(suggestions), safe=False)
-
-
-# class ToolDetailView(View):
-#     template_name = "assets/tool_details/tool_detail.html"
-
-#     def get(self, request, pk):
-#         return self.render_tool_detail(request, pk)
-
-#     def render_tool_detail(self, request, pk, form=None, edit_review_id=None):
-#         tool = get_object_or_404(Tool, pk=pk)
-#         now = timezone.now()
-
-#         # Reviews
-#         reviews = ToolReview.objects.filter(tool=tool).order_by("-created_at")
-#         total_reviews = reviews.count()
-#         average_rating = round(reviews.aggregate(avg=Avg("rating"))["avg"] or 0.0, 1)
-
-#         # Stars
-#         stars = []
-#         for i in range(1, 6):
-#             if average_rating >= i:
-#                 stars.append("full")
-#             elif average_rating + 0.5 >= i:
-#                 stars.append("half")
-#             else:
-#                 stars.append("empty")
-
-#         # Review form
-#         edit_review = None
-#         if edit_review_id and request.user.is_authenticated:
-#             try:
-#                 edit_review = ToolReview.objects.get(
-#                     pk=edit_review_id, farmer__user=request.user
-#                 )
-#                 form = form or ToolReviewForm(instance=edit_review)
-#             except ToolReview.DoesNotExist:
-#                 pass
-#         if not form:
-#             form = ToolReviewForm()
-
-#         # --- CURRENT RENTAL ---
-#         current_rental = (
-#             Rental.objects.filter(
-#                 tool=tool,
-#                 start_date__lte=now,
-#                 end_date__gte=now,
-#                 status="paid",
-#                 is_active=True,
-#             )
-#             .order_by("start_date")
-#             .first()
-#         )
-
-#         # --- BOOKINGS ---
-#         pending_booking = (
-#             Booking.objects.filter(tool=tool, status="pending", end_date__gte=now)
-#             .order_by("start_date")
-#             .first()
-#         )
-
-#         confirmed_booking = (
-#             Booking.objects.filter(tool=tool, status="confirmed", end_date__gte=now)
-#             .order_by("start_date")
-#             .first()
-#         )
-
-#         # --- TOOL STATUS LIST ---
-#         tool_status_list = []
-
-#         if current_rental:
-#             tool_status_list.append(
-#                 {
-#                     "label": "Rented",
-#                     "badge": "danger",
-#                     "start_date": current_rental.start_date,
-#                     "end_date": current_rental.end_date,
-#                 }
-#             )
-
-#         if pending_booking:
-#             tool_status_list.append(
-#                 {
-#                     "label": "Pending",
-#                     "badge": "warning",
-#                     "start_date": pending_booking.start_date,
-#                     "end_date": pending_booking.end_date,
-#                 }
-#             )
-
-#         if confirmed_booking:
-#             tool_status_list.append(
-#                 {
-#                     "label": "Booked",
-#                     "badge": "primary",
-#                     "start_date": confirmed_booking.start_date,
-#                     "end_date": confirmed_booking.end_date,
-#                 }
-#             )
-
-#         if not current_rental and not pending_booking and not confirmed_booking:
-#             tool_status_list.append(
-#                 {
-#                     "label": "Available",
-#                     "badge": "success",
-#                     "start_date": None,
-#                     "end_date": None,
-#                 }
-#             )
-
-#         context = {
-#             "tool": tool,
-#             "reviews": reviews,
-#             "total_reviews": total_reviews,
-#             "average_rating": average_rating,
-#             "star_list": stars,
-#             "form": form,
-#             "weekly_price": tool.daily_rent_price * 6,
-#             "monthly_price": tool.daily_rent_price * 29,
-#             "tool_status_list": tool_status_list,
-#         }
-
-#         return render(request, self.template_name, context)
-
+    
 
 class ToolDetailView(View):
     template_name = "assets/tool_details/tool_detail.html"
@@ -707,117 +678,16 @@ class DeleteReviewView(LoginRequiredMixin, UserIsOwnerMixin, DeleteView):
 
 
 # Bookings and Rent
-# class BookingCreateView(LoginRequiredMixin, CreateView):
-#     model = Booking
-#     form_class = BookingForm
-#     template_name = "assets/bookings/booking.html"
-#     login_url = "farmer-login"  # Your farmer login URL name here
-
-#     def dispatch(self, request, *args, **kwargs):
-#         # Redirect to login if not authenticated
-#         if not request.user.is_authenticated:
-#             return redirect(self.login_url)
-
-#         # Check if user has a profile and is a farmer
-#         if not hasattr(request.user, "profile") or not request.user.profile.is_farmer:
-#             messages.error(request, "You must have a farmer account to book tools.")
-#             return redirect(self.login_url)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_form(self, form_class=None):
-#         form = super().get_form(form_class)
-#         # Set initial delivery_address field value from farmer profile location
-#         if hasattr(self.request.user, "profile") and self.request.user.profile.location:
-#             form.fields["delivery_address"].initial = self.request.user.profile.location
-#         return form
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         tool_id = self.request.GET.get("tool_id") or self.request.POST.get("tool")
-#         tool = None
-#         hourly_rate = 0.0
-
-#         if tool_id:
-#             tool = get_object_or_404(Tool, id=tool_id)
-
-#             if tool.daily_rent_price:
-#                 hourly_rate = tool.daily_rent_price / 24
-
-#             # Check if farmer has an active booking for this tool (pending or confirmed)
-#             existing_booking = Booking.objects.filter(
-#                 farmer=self.request.user.profile,
-#                 tool=tool,
-#                 status__in=["pending", "confirmed"],
-#             ).first()
-
-#             context["booking"] = existing_booking
-
-#         context["tool"] = tool
-#         context["hourly_rate"] = hourly_rate
-
-#         return context
-
-#     def form_valid(self, form):
-#         tool = form.cleaned_data["tool"]
-#         farmer = self.request.user.profile
-
-#         # Check for existing active booking (pending or confirmed) for same tool by farmer
-#         existing_booking = Booking.objects.filter(
-#             farmer=farmer,
-#             tool=tool,
-#             status__in=["pending", "confirmed"],
-#         ).first()
-
-#         if existing_booking:
-#             messages.info(
-#                 self.request,
-#                 f"You already have a booking for this tool in '{existing_booking.get_status_display()}' status.",
-#             )
-#             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
-
-#         # Prevent booking in the past
-#         start_date = form.cleaned_data.get("start_date")
-#         end_date = form.cleaned_data.get("end_date")
-#         now = timezone.now()
-
-#         if start_date < now or end_date < now:
-#             messages.error(
-#                 self.request, "You cannot book tools for a past date or time."
-#             )
-#             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
-
-#         # Check if tool is available in the requested time range
-#         if not is_tool_available(tool, start_date, end_date):
-#             messages.error(
-#                 self.request,
-#                 "The tool is not available for the selected dates and times.",
-#             )
-#             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
-
-#         # Assign farmer and set booking status
-#         form.instance.farmer = farmer
-#         form.instance.status = "pending"
-
-#         return super().form_valid(form)
-
-#     def get_success_url(self):
-#         return reverse("tool-detail", kwargs={"pk": self.object.tool.id})
-
-
 class BookingCreateView(LoginRequiredMixin, CreateView):
     model = Booking
     form_class = BookingForm
     template_name = "assets/bookings/booking.html"
-    login_url = "farmer-login"  # Farmer login URL
+    login_url = "farmer-login"
 
     def dispatch(self, request, *args, **kwargs):
-        # Redirect to login if not authenticated
         if not request.user.is_authenticated:
             return redirect(self.login_url)
 
-        # Ensure user is a farmer
         if not hasattr(request.user, "profile") or not request.user.profile.is_farmer:
             messages.error(request, "You must have a farmer account to book tools.")
             return redirect(self.login_url)
@@ -826,7 +696,6 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        # Pre-fill delivery address
         if hasattr(self.request.user, "profile") and self.request.user.profile.location:
             form.fields["delivery_address"].initial = self.request.user.profile.location
         return form
@@ -842,7 +711,6 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
             if tool.daily_rent_price:
                 hourly_rate = tool.daily_rent_price / 24
 
-            # Check if farmer has an active booking for this tool
             existing_booking = Booking.objects.filter(
                 farmer=self.request.user.profile,
                 tool=tool,
@@ -861,21 +729,24 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
         end_date = form.cleaned_data.get("end_date")
         now = timezone.now()
 
-        # Prevent booking in the past
         if start_date < now or end_date < now:
             messages.error(
                 self.request, "You cannot book tools for a past date or time."
             )
             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
 
-        # Prevent overlapping with active rentals
-        overlapping_rental = Rental.objects.filter(
-            tool=tool,
-            start_date__lt=end_date,
-            end_date__gt=start_date,
-            status="paid",
-            is_active=True,
-        ).exists()
+        # Prevent booking during a rental period
+        overlapping_rental = (
+            Rental.objects.filter(
+                tool=tool,
+                start_date__lt=end_date,
+                end_date__gt=start_date,
+                is_active=True,
+            )
+            .exclude(status__in=["cancelled", "returned"])
+            .exists()
+        )
+
         if overlapping_rental:
             messages.error(
                 self.request,
@@ -883,7 +754,7 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
             )
             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
 
-        # Prevent overlapping with existing bookings (pending or confirmed)
+        # Prevent overlapping with existing bookings
         if not is_tool_available(tool, start_date, end_date):
             messages.error(
                 self.request,
@@ -891,7 +762,6 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
             )
             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
 
-        # Check for existing booking by same farmer
         existing_booking = Booking.objects.filter(
             farmer=farmer, tool=tool, status__in=["pending", "confirmed"]
         ).first()
@@ -902,7 +772,6 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
             )
             return redirect(reverse("tool-detail", kwargs={"pk": tool.pk}))
 
-        # Assign farmer and set status
         form.instance.farmer = farmer
         form.instance.status = "pending"
         return super().form_valid(form)
@@ -918,26 +787,20 @@ class ToolAvailabilityCheckView(View):
         end_date = request.GET.get("end_date")
 
         if not (tool_id and start_date and end_date):
-            return JsonResponse(
-                {"available": False, "error": "Missing data"}, status=400
-            )
+            return JsonResponse({"available": False, "error": "Missing data"}, status=400)
 
         try:
             tool = Tool.objects.get(id=tool_id)
         except Tool.DoesNotExist:
-            return JsonResponse(
-                {"available": False, "error": "Tool not found"}, status=404
-            )
+            return JsonResponse({"available": False, "error": "Tool not found"}, status=404)
 
         start_dt = parse_datetime(start_date)
         end_dt = parse_datetime(end_date)
 
         if not (start_dt and end_dt):
-            return JsonResponse(
-                {"available": False, "error": "Invalid dates"}, status=400
-            )
+            return JsonResponse({"available": False, "error": "Invalid dates"}, status=400)
 
-        # Check for conflicts
+        # Check for booking conflicts
         conflicts = (
             Booking.objects.filter(tool=tool, status__in=["pending", "confirmed"])
             .filter(Q(start_date__lt=end_dt) & Q(end_date__gt=start_dt))
@@ -945,10 +808,26 @@ class ToolAvailabilityCheckView(View):
         )
 
         if conflicts:
+            return JsonResponse({"available": False, "status": conflicts.status, "type": "booking"})
+
+        # Check rental conflicts
+        rental_conflict = (
+            Rental.objects.filter(
+                tool=tool,
+                is_active=True,
+                start_date__lt=end_dt,
+                end_date__gt=start_dt,
+            )
+            .exclude(status__in=["cancelled", "returned"])
+            .first()
+        )
+
+        if rental_conflict:
             return JsonResponse(
                 {
                     "available": False,
-                    "status": conflicts.status,
+                    "status": rental_conflict.status,
+                    "type": "rental",
                 }
             )
 
@@ -1003,200 +882,58 @@ def notify_upcoming_bookings():
     BookingNotifier.notify_upcoming_bookings()
 
 
-# class RentToolView(LoginRequiredMixin, View):
-#     login_url = "farmer-login"
-#     template_name = "assets/bookings/rent.html"
-
-#     def get(self, request, tool_id):
-#         tool = get_object_or_404(Tool, id=tool_id)
-#         form = RentalForm()
-
-#         # Check if tool is currently rented
-#         active_rentals = Rental.objects.filter(
-#             tool=tool,
-#             status__in=["pending", "paid", "rented"],
-#             end_date__gte=timezone.now(),
-#             is_active=True,
-#         ).order_by("start_date")
-
-#         can_extend = False
-#         tool_status_list = []
-
-#         if active_rentals.exists():
-#             rental = active_rentals.first()
-#             if request.user == rental.farmer.user:
-#                 can_extend = True
-#             tool_status_list.append(
-#                 {
-#                     "label": "Rented",
-#                     "badge": "danger",
-#                     "start_date": rental.start_date,
-#                     "end_date": rental.end_date,
-#                     "renter_id": rental.farmer.user.id,
-#                     "rental_obj": rental,
-#                 }
-#             )
-#         else:
-#             tool_status_list.append(
-#                 {
-#                     "label": "Available",
-#                     "badge": "success",
-#                     "start_date": None,
-#                     "end_date": None,
-#                     "renter_id": None,
-#                 }
-#             )
-
-#         return render(
-#             request,
-#             self.template_name,
-#             {
-#                 "tool": tool,
-#                 "form": form,
-#                 "tool_status_list": tool_status_list,
-#                 "can_extend": can_extend,
-#             },
-#         )
-
-#     def post(self, request, tool_id):
-#         tool = get_object_or_404(Tool, id=tool_id)
-#         form = RentalForm(request.POST)
-
-#         if not form.is_valid():
-#             messages.error(request, "Please correct the errors below.")
-#             return render(request, self.template_name, {"tool": tool, "form": form})
-
-#         # Ensure user is a farmer
-#         try:
-#             farmer_profile = Profile.objects.get(user=request.user, is_farmer=True)
-#         except Profile.DoesNotExist:
-#             messages.error(request, "You must be a farmer to rent.")
-#             return redirect("farmer-orders")
-
-#         # Check if tool is already rented
-#         active_rentals = Rental.objects.filter(
-#             tool=tool,
-#             status__in=["pending", "paid", "rented"],
-#             end_date__gte=timezone.now(),
-#             is_active=True,
-#         ).exists()
-
-#         if active_rentals:
-#             messages.error(request, "This tool is already rented and unavailable.")
-#             return redirect("tool-detail", tool_id=tool.id)
-
-#         # Rental data
-#         start_date = form.cleaned_data.get("start_date")
-#         end_date = form.cleaned_data.get("end_date")
-#         delivery_needed = form.cleaned_data.get("delivery_needed")
-#         payment_method = form.cleaned_data.get("payment_method")  # 'cash' or 'esewa'
-
-#         if end_date <= start_date:
-#             form.add_error("end_date", "End date must be after start date.")
-#             return render(request, self.template_name, {"tool": tool, "form": form})
-
-#         daily_rate = tool.daily_rent_price or Decimal("0")
-#         hourly_rate = daily_rate / Decimal("24")
-#         diff_hours = (end_date - start_date).total_seconds() / 3600
-
-#         if diff_hours <= 24:
-#             rental_cost = min(daily_rate, Decimal(diff_hours) * hourly_rate)
-#         else:
-#             full_days = Decimal(diff_hours) // 24
-#             remaining_hours = Decimal(diff_hours) % 24
-#             rental_cost = (full_days * daily_rate) + min(
-#                 daily_rate, remaining_hours * hourly_rate
-#             )
-
-#         delivery_charge = (
-#             tool.delivery_charge if delivery_needed == "yes" else Decimal("0")
-#         )
-#         total_price = rental_cost + delivery_charge
-
-#         # Create rental
-#         rental = form.save(commit=False)
-#         rental.tool = tool
-#         rental.farmer = farmer_profile
-#         rental.order_id = str(uuid.uuid4())
-#         rental.total_price = total_price
-#         rental.delivery_charge = delivery_charge
-
-#         # Set status based on payment method
-#         if payment_method == "cash":
-#             rental.status = "pending"  # COD pending
-#             rental.paid_amount = Decimal("0.00")
-#         else:
-#             rental.status = "paid"  # eSewa paid
-#             rental.paid_amount = total_price
-
-#         rental.payment_method = payment_method
-#         rental.is_active = True
-#         rental.save()
-
-#         # Mark tool as rented/unavailable immediately
-#         tool.is_available = False
-#         tool.save()
-
-#         # Redirect to proper success page
-#         if payment_method == "cash":
-#             messages.success(request, "Rental request submitted. Pay on delivery.")
-#             return redirect("rental-cod-success", pk=rental.pk)
-#         else:
-#             messages.success(request, "Rental payment successful via eSewa.")
-#             return redirect("rental-esewa-success", pk=rental.pk)
-
-
 class RentToolView(LoginRequiredMixin, View):
     login_url = "farmer-login"
     template_name = "assets/bookings/rent.html"
 
+    # -------------------------
+    # Calculate cost
+    # -------------------------
+    def calculate_rental_cost(self, start, end, daily_rate):
+        diff_hours = (end - start).total_seconds() / 3600
+        hourly_rate = daily_rate / Decimal("24")
+        if diff_hours <= 24:
+            cost = min(daily_rate, Decimal(diff_hours) * hourly_rate)
+        else:
+            full_days = Decimal(diff_hours) // 24
+            rem_hours = Decimal(diff_hours) % 24
+            cost = full_days * daily_rate + min(daily_rate, rem_hours * hourly_rate)
+        return cost.quantize(Decimal("0.00"))
+
+    # -------------------------
+    # GET
+    # -------------------------
     def get(self, request, tool_id):
         tool = get_object_or_404(Tool, id=tool_id)
         form = RentalForm()
 
-        # Active rentals:
-        # - COD: pending/paid/rented should block
-        # - eSewa: only rented should block
-        active_rentals = (
+        active_rental = (
             Rental.objects.filter(
                 tool=tool,
                 is_active=True,
-                end_date__gte=timezone.now(),
             )
-            .filter(
-                Q(payment_method="cash", status__in=["pending", "paid", "rented"])
-                | Q(payment_method="esewa", status="rented")
-            )
-            .order_by("start_date")
+            .order_by("-id")
+            .first()
         )
 
-        can_extend = False
-        tool_status_list = []
-
-        if active_rentals.exists():
-            rental = active_rentals.first()
-            if request.user == rental.farmer.user:
-                can_extend = True
-            tool_status_list.append(
-                {
-                    "label": "Rented",
-                    "badge": "danger",
-                    "start_date": rental.start_date,
-                    "end_date": rental.end_date,
-                    "renter_id": rental.farmer.user.id,
-                    "rental_obj": rental,
-                }
-            )
+        if active_rental:
+            tool_status = {
+                "label": "Rented",
+                "badge": "danger",
+                "start_date": active_rental.start_date,
+                "end_date": active_rental.end_date,
+                "extend_date": active_rental.extend_date,
+                "renter_id": active_rental.farmer.user.id,
+            }
         else:
-            tool_status_list.append(
-                {
-                    "label": "Available",
-                    "badge": "success",
-                    "start_date": None,
-                    "end_date": None,
-                    "renter_id": None,
-                }
-            )
+            tool_status = {
+                "label": "Available",
+                "badge": "success",
+                "start_date": None,
+                "end_date": None,
+                "extend_date": None,
+                "renter_id": None,
+            }
 
         return render(
             request,
@@ -1204,82 +941,126 @@ class RentToolView(LoginRequiredMixin, View):
             {
                 "tool": tool,
                 "form": form,
-                "tool_status_list": tool_status_list,
-                "can_extend": can_extend,
+                "tool_status_list": [tool_status],
             },
         )
 
+    # -------------------------
+    # POST
+    # -------------------------
     def post(self, request, tool_id):
         tool = get_object_or_404(Tool, id=tool_id)
-        form = RentalForm(request.POST)
-        if not form.is_valid():
-            messages.error(request, "Please correct errors.")
-            return render(request, self.template_name, {"tool": tool, "form": form})
 
-        try:
-            farmer_profile = Profile.objects.get(user=request.user, is_farmer=True)
-        except Profile.DoesNotExist:
-            messages.error(request, "You must be a farmer to rent.")
-            return redirect("farmer-orders")
+        farmer_profile = Profile.objects.get(user=request.user, is_farmer=True)
 
-        start_date = form.cleaned_data.get("start_date")
-        end_date = form.cleaned_data.get("end_date")
-        delivery_needed = form.cleaned_data.get("delivery_needed")
-        payment_method = form.cleaned_data.get("payment_method")  # 'cash' or 'esewa'
+        current_rental = (
+            Rental.objects.filter(
+                tool=tool,
+                is_active=True,
+                farmer=farmer_profile,
+            )
+            .order_by("-id")
+            .first()
+        )
 
-        if end_date <= start_date:
-            form.add_error("end_date", "End date must be after start date.")
-            return render(request, self.template_name, {"tool": tool, "form": form})
+        # -----------------------------
+        # EXTEND
+        # -----------------------------
+        if current_rental and not current_rental.extend_date:
 
-        # --- Rental Cost Calculation ---
-        daily_rate = tool.daily_rent_price or Decimal("0")
-        hourly_rate = daily_rate / Decimal("24")
-        diff_hours = (end_date - start_date).total_seconds() / 3600
+            extend_date_str = request.POST.get("extend_date")
+            payment_method = request.POST.get("payment_method")
 
-        if diff_hours <= 24:
-            rental_cost = min(daily_rate, Decimal(diff_hours) * hourly_rate)
-        else:
-            full_days = Decimal(diff_hours) // 24
-            rem_hours = Decimal(diff_hours) % 24
-            rental_cost = full_days * daily_rate + min(
-                daily_rate, rem_hours * hourly_rate
+            if not extend_date_str or not payment_method:
+                messages.error(request, "Select extension date and payment method.")
+                return redirect(request.path)
+
+            new_end_date = datetime.strptime(extend_date_str, "%Y-%m-%dT%H:%M")
+
+            if timezone.is_naive(new_end_date):
+                new_end_date = timezone.make_aware(new_end_date)
+
+            if new_end_date <= current_rental.end_date:
+                messages.error(request, "New end date must be after existing end date.")
+                return redirect(request.path)
+
+            # Calculate extra cost
+            extra_cost = self.calculate_rental_cost(
+                current_rental.end_date,
+                new_end_date,
+                tool.daily_rent_price,
             )
 
-        delivery_charge = (
-            tool.delivery_charge if delivery_needed == "yes" else Decimal("0")
-        )
-        total_price = (rental_cost + delivery_charge).quantize(Decimal("0.00"))
+            # Save extension data (no overwrite)
+            current_rental.extend_date = new_end_date
+            current_rental.total_price += extra_cost
+            current_rental.save()
 
-        # --- Create Rental Object ---
+            if payment_method == "cash":
+                messages.success(request, "Extension added. Pay on delivery.")
+                return redirect("rental-cod-success", pk=current_rental.pk)
+
+            # eSewa
+            current_rental.payment_method = "esewa"
+            current_rental.status = "pending"
+            current_rental.is_active = False
+            current_rental.esewa_transaction_uuid = str(uuid.uuid4())
+            current_rental.save()
+
+            context = {
+                "esewa_url": settings.ESEWA_EPAY_URL,
+                "txAmt": str(extra_cost),
+                "tAmt": str(extra_cost),
+                "psc": "0",
+                "pdc": "0",
+                "pid": current_rental.esewa_transaction_uuid,
+                "scd": settings.ESEWA_PRODUCT_CODE,
+                "su": settings.ESEWA_SUCCESS_URL,
+                "fu": settings.ESEWA_FAILURE_URL,
+            }
+            return render(request, "assets/bookings/esewa_redirect.html", context)
+
+        # -----------------------------
+        # NEW RENTAL
+        # -----------------------------
+        form = RentalForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please fix errors.")
+            return redirect(request.path)
+
+        start_date = form.cleaned_data["start_date"]
+        end_date = form.cleaned_data["end_date"]
+        payment_method = form.cleaned_data["payment_method"]
+
+        if timezone.is_naive(start_date):
+            start_date = timezone.make_aware(start_date)
+        if timezone.is_naive(end_date):
+            end_date = timezone.make_aware(end_date)
+
+        rental_cost = self.calculate_rental_cost(
+            start_date, end_date, tool.daily_rent_price
+        )
+
         rental = form.save(commit=False)
         rental.tool = tool
         rental.farmer = farmer_profile
-        rental.total_price = total_price
-        rental.delivery_charge = delivery_charge
-        rental.payment_method = payment_method
+        rental.total_price = rental_cost
+        rental.delivery_charge = Decimal("0.00")
         rental.paid_amount = Decimal("0.00")
+        rental.extend_date = None
+        rental.is_active = payment_method != "esewa"
+        rental.status = "pending"
         rental.esewa_transaction_uuid = str(uuid.uuid4())
-
-        # ✅ Do NOT mark as active or rented yet for eSewa
-        if payment_method == "esewa":
-            rental.is_active = False
-            rental.status = "pending"
-        else:
-            rental.is_active = True
-            rental.status = "pending"
-
         rental.save()
 
-        # --- Cash Flow (unchanged) ---
         if payment_method == "cash":
-            messages.success(request, "Rental submitted. Pay on delivery.")
+            messages.success(request, "Rental created. Pay on delivery.")
             return redirect("rental-cod-success", pk=rental.pk)
 
-        # --- eSewa Flow ---
         context = {
             "esewa_url": settings.ESEWA_EPAY_URL,
-            "txAmt": str(total_price),
-            "tAmt": str(total_price),
+            "txAmt": str(rental_cost),
+            "tAmt": str(rental_cost),
             "psc": "0",
             "pdc": "0",
             "pid": rental.esewa_transaction_uuid,
@@ -1302,7 +1083,7 @@ class EsewaSuccessView(View):
             messages.error(request, "Rental not found.")
             return redirect("home")
 
-        # ✅ Confirm payment only here
+        # Confirm payment only here
         rental.paid_amount = rental.total_price
         rental.esewa_status = "success"
         rental.esewa_ref_id = refId or ""
@@ -1319,7 +1100,7 @@ class EsewaFailureView(View):
         pid = request.GET.get("pid")
         try:
             rental = Rental.objects.get(esewa_transaction_uuid=pid)
-            # ❌ Reset so tool becomes available again
+            # Reset so tool becomes available again
             rental.esewa_status = "failed"
             rental.status = "cancelled"
             rental.is_active = False
@@ -1393,3 +1174,58 @@ class RentalEsewaSuccessView(TemplateView):
         rental = get_object_or_404(Rental, pk=rental_pk)
         context["rental"] = rental
         return context
+
+
+class BookAndRentListView(LoginRequiredMixin, TemplateView):
+    template_name = "assets/book_and_rent_list.html"
+    login_url = "farmer-login"
+
+    def dispatch(self, request, *args, **kwargs):
+        # Ensure only farmers can access
+        if not hasattr(request.user, "profile") or not request.user.profile.is_farmer:
+            messages.error(
+                request, "You must be a farmer to view your bookings and rentals."
+            )
+            return redirect("farmer-login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        farmer = self.request.user.profile
+
+        # Separate booked and rented tools
+        context["booked_tools"] = (
+            Booking.objects.filter(farmer=farmer)
+            .select_related("tool")
+            .order_by("-created_at")
+        )
+        context["rented_tools"] = (
+            Rental.objects.filter(farmer=farmer)
+            .select_related("tool")
+            .order_by("-created_at")
+        )
+        return context
+
+
+class ContactView(FormView):
+    template_name = "assets/contact.html"
+    form_class = ContactForm
+    success_url = reverse_lazy("contact")
+
+    def form_valid(self, form):
+        form.save()
+
+        # AJAX request → return JSON success
+        if self.request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": True})
+
+        # Normal fallback
+        return self.render_to_response(
+            self.get_context_data(form=self.form_class(), contact_success=True)
+        )
+
+    def form_invalid(self, form):
+        if self.request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+        return super().form_invalid(form)

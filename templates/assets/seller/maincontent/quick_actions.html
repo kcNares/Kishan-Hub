@@ -1,28 +1,76 @@
 <!-- Quick Actions -->
-<!-- <div class="col-lg-4 mb-4">
+<div class="col-lg-4 mb-4">
     <div class="card">
         <div class="card-header">
-            <h5 class="mb-0">Quick Actions</h5>
+            <h5 class="mb-0">Rental Distribution</h5>
         </div>
         <div class="card-body">
-            <div class="d-grid gap-3">
-                <button class="btn btn-success btn-lg">
-                    <i class="fas fa-plus me-2"></i>
-                    Add New Tool
-                </button>
-                <button class="btn btn-outline-success">
-                    <i class="fas fa-calendar-alt me-2"></i>
-                    View All Bookings
-                </button>
-                <button class="btn btn-outline-success">
-                    <i class="fas fa-chart-line me-2"></i>
-                    View Earnings
-                </button>
-                <button class="btn btn-outline-success">
-                    <i class="fas fa-cog me-2"></i>
-                    Shop Settings
-                </button>
-            </div>
+            <canvas id="rentedToolsBarChart" style="height: 250px;"></canvas>
         </div>
     </div>
-</div> -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('rentedToolsBarChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'bar', // <-- changed from pie to bar
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'Times Rented',
+                    data: {{ chart_data|safe }},
+                    backgroundColor: [
+                        '#4e73df',
+                        '#1cc88a',
+                        '#36b9cc',
+                        '#f6c23e',
+                        '#e74a3b',
+                        '#858796',
+                        '#fd7e14',
+                        '#6f42c1'
+                    ],
+                    borderColor: '#00000033',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }, // optional for bar chart
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+                                return `${label}: ${value}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        precision: 0,
+                        title: {
+                            display: true,
+                            text: 'Times Rented'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Tool Name'
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+
+

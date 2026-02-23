@@ -98,22 +98,6 @@ def is_tool_available(
     return not (rental_conflict or booking_conflict)
 
 
-# 1. Bayesian Average Rating
-# def compute_bayesian_average(tool, m=5):
-#     """
-#     Computes a smoothed rating using Bayesian average to avoid bias from low review counts.
-#     """
-#     from kishan.models import ToolReview
-#     all_reviews = ToolReview.objects.all()
-#     C = all_reviews.aggregate(avg=Avg("rating"))["avg"] or 0  # Global average
-#     v = tool.reviews.count()
-#     R = tool.reviews.aggregate(avg=Avg("rating"))["avg"] or 0
-
-#     if v == 0:
-#         return round(C, 1)
-
-#     bayesian = (v / (v + m)) * R + (m / (v + m)) * C
-#     return round(bayesian, 1)
 
 
 # 2. Sentiment Mismatch Checker
@@ -193,6 +177,7 @@ def detect_fake_reviews(tool=None):
     ToolReview.objects.bulk_update(valid_reviews, ["is_flagged"])
 
 
+# Haversine formula
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the great-circle distance between two points on Earth in kilometers.

@@ -1,7 +1,10 @@
 from django.urls import path
 from .views import (
     AdminDashboardView,
+    AdminDeleteMessageView,
     AdminLogoutView,
+    AdminMessagesView,
+    AdminReplyMessageView,
     AdminRootRedirectView,
     AdminLoginView,
     FarmerLoginView,
@@ -50,4 +53,15 @@ urlpatterns = [
     path("farmer/register/", FarmerRegisterView.as_view(), name="farmer-register"),
     path("farmer/login/", FarmerLoginView.as_view(), name="farmer-login"),
     path("farmer/logout/", LogoutView.as_view(), name="farmer-logout"),
+    path("admin/messages/", AdminMessagesView.as_view(), name="admin-messages"),
+    path(
+        "admin/messages/reply/<int:pk>/",
+        AdminReplyMessageView.as_view(),
+        name="admin_reply_message",
+    ),
+    path(
+        "admin/messages/delete/<int:pk>/",
+        AdminDeleteMessageView.as_view(),
+        name="admin_delete_message",
+    ),
 ]

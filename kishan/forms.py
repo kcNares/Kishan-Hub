@@ -1,5 +1,5 @@
 from django import forms
-from kishan.models import ToolReview
+from kishan.models import ToolReview, ContactMessage
 from django.forms import DateTimeInput, HiddenInput
 from kishan.utils import is_tool_available
 from .models import Booking, Rental
@@ -172,3 +172,26 @@ class RentalForm(forms.ModelForm):
                 )
 
         return cleaned_data
+
+
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = ContactMessage
+        fields = ["full_name", "email", "phone", "subject", "message"]
+
+        widgets = {
+            "full_name": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "phone": forms.TextInput(attrs={"class": "form-control"}),
+            "subject": forms.Select(
+                choices=[
+                    ("General Inquiry", "General Inquiry"),
+                    ("Tool Rental", "Tool Rental"),
+                    ("Technical Support", "Technical Support"),
+                    ("Partnership", "Partnership"),
+                    ("Other", "Other"),
+                ],
+                attrs={"class": "form-select"},
+            ),
+            "message": forms.Textarea(attrs={"class": "form-control", "rows": 5}),
+        }

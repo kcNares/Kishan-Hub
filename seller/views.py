@@ -9,7 +9,7 @@ from .models import Seller, SellerDocument
 from .forms import SellerForm
 from django.contrib import messages
 from .forms import ToolForm, CategoryForm, TagForm
-from kishan.models import Booking, Notification, Rental, Tool, Category, Tag
+from kishan.models import Booking, Notification, Rental, Tool, Category, Tag, ToolReview
 from django.core.exceptions import ObjectDoesNotExist
 
 
@@ -307,6 +307,7 @@ class BookingDeleteView(View):
         return redirect(reverse("booking-list"))
 
 
+#Payment part
 class SellerPaymentListView(LoginRequiredMixin, ListView):
     template_name = "assets/seller/register/payment_method.html"
     context_object_name = "rentals"
@@ -347,3 +348,62 @@ class DeleteRentalView(LoginRequiredMixin, View):
             request, f"Rental for {rental.tool.name} has been deleted successfully."
         )
         return redirect("payments-list")
+
+#-----Reviews Sidebar-----
+class SellerReviewListView(LoginRequiredMixin, ListView):
+    model = ToolReview
+    template_name = "assets/seller/register/reviews.html"
+    context_object_name = "reviews"
+
+    def get_queryset(self):
+        return ToolReview.objects.filter(tool__owner=self.request.user.seller).order_by(
+            "-created_at"
+        )
+
+class SellerReplyCreateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        review = get_object_or_404(ToolReview, pk=pk, tool__owner=request.user.seller)
+
+        # BLOCK if already replied
+        if review.reply:
+            messages.warning(request, "Reply already exists!")
+            return redirect("seller_reviews")
+
+        review.reply = request.POST.get("reply")
+        review.save()
+        messages.success(request, "Reply added successfully!")
+        return redirect("seller_reviews")
+
+
+class SellerReplyUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        review = get_object_or_404(ToolReview, pk=pk, tool__owner=request.user.seller)
+
+        review.reply = request.POST.get("reply")
+        review.save()
+
+        messages.success(request, "Reply updated successfully!")
+        return redirect("seller_reviews")
+
+
+class SellerReplyDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        review = get_object_or_404(ToolReview, pk=pk, tool__owner=request.user.seller)
+
+        review.reply = None
+        review.save()
+
+        messages.success(request, "Reply deleted successfully!")
+        return redirect("seller_reviews")
+
+
+class SellerReviewDeleteView(LoginRequiredMixin, DeleteView):
+    model = ToolReview
+    success_url = reverse_lazy("seller_reviews")
+
+    def get_queryset(self):
+        return ToolReview.objects.filter(tool__owner=self.request.user.seller)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Review deleted.")
+        return super().delete(request, *args, **kwargs)

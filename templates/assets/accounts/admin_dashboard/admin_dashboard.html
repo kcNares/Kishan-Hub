@@ -1,97 +1,80 @@
 {% extends 'assets/accounts/admin_dashboard/admin_dashboard_base.html' %}
 {% load static %}
+
 {% block content %}
+
 <!-- Cards Section -->
 <section class="row mt-4">
     <div class="col-md-3 mb-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-seedling icon text-success"></i>
-          <h5 class="card-title">Total Tools</h5>
-          <p class="card-text fw-bold">120</p>
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-seedling icon text-success"></i>
+                <h5 class="card-title">Total Tools</h5>
+                <p class="card-text fw-bold">{{ total_tools }}</p>
+            </div>
         </div>
-      </div>
     </div>
     <div class="col-md-3 mb-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-store-alt icon text-primary"></i>
-          <h5 class="card-title">Sellers</h5>
-          <p class="card-text fw-bold">35</p>
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-store-alt icon text-primary"></i>
+                <h5 class="card-title">Sellers</h5>
+                <p class="card-text fw-bold">{{ total_sellers }}</p>
+            </div>
         </div>
-      </div>
     </div>
     <div class="col-md-3 mb-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-calendar-check icon text-warning"></i>
-          <h5 class="card-title">Pending Requests</h5>
-          <p class="card-text fw-bold">12</p>
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-check icon text-warning"></i>
+                <h5 class="card-title">Pending Requests</h5>
+                <p class="card-text fw-bold">{{ pending_requests }}</p>
+            </div>
         </div>
-      </div>
     </div>
     <div class="col-md-3 mb-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-wallet icon text-info"></i>
-          <h5 class="card-title">Earnings (Monthly)</h5>
-          <p class="card-text fw-bold">₹1,20,000</p>
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-wallet icon text-info"></i>
+                <h5 class="card-title">Earnings (Monthly)</h5>
+                <p class="card-text fw-bold">Rs. {{ earnings_monthly|floatformat:2 }}</p>
+            </div>
         </div>
-      </div>
     </div>
-  </section>
+</section>
 
-  <!-- Table Section -->
-  <section class="mt-5">
+<!-- Table Section -->
+<section class="mt-5">
     <h4>Recent Tools Added</h4>
     <div class="table-responsive">
-      <table class="table table-bordered table-hover bg-white shadow-sm mt-3">
-        <thead class="table-light">
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Rental Price/day</th>
-            <th>Available From</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>T001</td>
-            <td>Tractor</td>
-            <td>₹500</td>
-            <td>2025-04-01</td>
-            <td><span class="status active">Active</span></td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary">Edit</button>
-              <button class="btn btn-sm btn-outline-danger">Delete</button>
-            </td>
-          </tr>
-          <tr>
-            <td>T002</td>
-            <td>Rotavator</td>
-            <td>₹300</td>
-            <td>2025-04-05</td>
-            <td><span class="status inactive">Inactive</span></td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary">Edit</button>
-              <button class="btn btn-sm btn-outline-danger">Delete</button>
-            </td>
-          </tr>
-          <tr>
-            <td>T003</td>
-            <td>Harvester</td>
-            <td>₹800</td>
-            <td>2025-04-03</td>
-            <td><span class="status active">Active</span></td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary">Edit</button>
-              <button class="btn btn-sm btn-outline-danger">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <table class="table table-bordered table-hover bg-white shadow-sm mt-3">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Rental Price/day</th>
+                    <th>Available From</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tool in recent_tools %}
+                <tr>
+                    <td>{{ tool.id }}</td>
+                    <td>{{ tool.name }}</td>
+                    <td>Rs. {{ tool.daily_rent_price|floatformat:2 }}</td>
+                    <td>{{ tool.created_at|date:"Y-m-d" }}</td>
+                    <td>{{ tool.get_status_display }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">No tools found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-  </section>
+</section>
+
+
 {% endblock content %}

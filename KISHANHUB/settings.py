@@ -110,6 +110,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# settings.py (snippet)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+
+# optional tuning
+KISHAN_SIM_CACHE_TTL = 6 * 3600  # 6 hours
+KISHAN_POSITIVE_RENTAL_STATUSES = ["paid", "rented"]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

@@ -1,0 +1,35 @@
+{% extends 'assets/accounts/admin_dashboard/admin_dashboard_base.html' %}
+{% block content %}
+<section class="mt-4">
+    <h4>Reply to {{ message.full_name }} ({{ message.email }})</h4>
+
+    {% if messages %}
+        {% for msg in messages %}
+            <div class="alert alert-{{ msg.tags }}">{{ msg }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card mt-3 shadow-sm">
+        <div class="card-body">
+            <h5>Original Message</h5>
+            <p><strong>Subject:</strong> {{ message.subject }}</p>
+            <p><strong>Message:</strong> {{ message.message }}</p>
+            <hr>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Reply Subject</label>
+                    <input type="text" class="form-control" name="subject" placeholder="Enter email subject" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reply Message</label>
+                    <textarea class="form-control" name="message" rows="6" placeholder="Type your reply here..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">Send Reply</button>
+                <a href="{% url 'admin-messages' %}" class="btn btn-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

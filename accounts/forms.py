@@ -71,14 +71,6 @@ class FarmerRegistrationForm(forms.ModelForm):
         widget=forms.PasswordInput, label="Confirm Password"
     )
     phone = forms.CharField(max_length=15, label="Phone Number")
-    location = forms.CharField(
-        max_length=255,
-        required=True,
-        label="Location",
-        widget=forms.TextInput(
-            attrs={"placeholder": "You must add your current location."}
-        ),
-    )
 
     class Meta:
         model = User
@@ -113,7 +105,6 @@ class FarmerRegistrationForm(forms.ModelForm):
             user.save()
             profile = user.profile
             profile.phone = self.cleaned_data["phone"]
-            profile.location = self.cleaned_data["location"]
             profile.is_farmer = True
             profile.is_seller = False
             profile.save()

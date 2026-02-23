@@ -54,81 +54,270 @@
           <div class="col-12">
             <!-- FORM -->
             <form id="rentForm" method="post" action="{% url 'rent-tool' tool.id %}" class="needs-validation" novalidate>
-              {% csrf_token %}
-              <input type="hidden" name="tool" value="{{ tool.id }}">
-              <input type="hidden" name="total_price" id="id_total_price" value="0.00">
-              <input type="hidden" name="delivery_charge" id="id_delivery_charge" value="0.00">
-              <input type="hidden" name="payment_method" id="id_payment_method" value="">
+  {% csrf_token %}
+  <input type="hidden" name="tool" value="{{ tool.id }}">
+  <input type="hidden" name="total_price" id="id_total_price" value="0.00">
+  <input type="hidden" name="delivery_charge" id="id_delivery_charge" value="0.00">
+  <input type="hidden" name="payment_method" id="id_payment_method" value="">
 
-              {% if tool_status_list.0.label == "Available" %}
-                <!-- Normal rental flow -->
-                <div class="mb-3">
-                  <label for="start_date" class="form-label">Start Date & Time</label>
-                  <input id="start_date" name="start_date" type="datetime-local" class="form-control" required>
-                </div>
+  {% if tool_status_list.0.label == "Available" %}
 
-                <div class="mb-3">
-                  <label for="end_date" class="form-label">End Date & Time</label>
-                  <input id="end_date" name="end_date" type="datetime-local" class="form-control" required>
-                  <div class="invalid-feedback">End date/time is required and must be after start.</div>
-                </div>
+    <!-- Normal rental flow -->
+    <div class="mb-3">
+      <label for="start_date" class="form-label">Start Date & Time</label>
+      <input id="start_date" name="start_date" type="datetime-local" class="form-control" required>
+    </div>
 
-                <div class="mb-3">
-                  <label for="id_delivery_needed" class="form-label">Delivery option</label>
-                  <select id="id_delivery_needed" name="delivery_needed" class="form-select">
-                    <option value="no" selected>No — I'll pick up</option>
-                    <option value="yes">Yes — deliver to my address</option>
-                  </select>
-                </div>
+    <div class="mb-3">
+      <label for="end_date" class="form-label">End Date & Time</label>
+      <input id="end_date" name="end_date" type="datetime-local" class="form-control" required>
+      <div class="invalid-feedback">End date/time is required and must be after start.</div>
+    </div>
 
-                <!-- Delivery address wrapper -->
-                <div class="mb-3 d-none" id="deliveryAddressWrap">
-                  <label class="form-label">Delivery Address</label>
-                  <div class="input-group mb-2">
-                    <input type="text" id="delivery_address" name="delivery_address" class="form-control" placeholder="Selected location will appear here" readonly>
-                    <button type="button" class="btn btn-outline-primary" id="openMapBtn">
-                      <i class="bi bi-geo-alt-fill"></i> Pick Location
-                    </button>
-                  </div>
-                </div>
+    <div class="mb-3">
+      <label for="id_delivery_needed" class="form-label">Delivery option</label>
+      <select id="id_delivery_needed" name="delivery_needed" class="form-select">
+        <option value="no" selected>No — I'll pick up</option>
+        <option value="yes">Yes — deliver to my address</option>
+      </select>
+    </div>
 
-              {% else %}
-                <!-- Extension flow -->
-                <div class="mb-3">
-                  <label class="form-label">Current Rental</label>
-                  <input type="datetime-local" class="form-control mb-2" 
-                         value="{{ tool_status_list.0.start_date|date:'Y-m-d\\TH:i' }}" readonly>
-                  <input type="datetime-local" class="form-control" 
-                         value="{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}" readonly>
-                </div>
+    <!-- UPDATED DELIVERY ADDRESS WITH SAME SHOP MAP UI -->
+    <div class="mb-3 d-none" id="deliveryAddressWrap">
+      <label class="form-label">Delivery Address</label>
+      <div class="position-relative">
+        <textarea class="form-control pe-5" id="delivery_address" name="delivery_address"
+          rows="2" readonly required
+          placeholder="Select delivery location from map..."></textarea>
 
-                {% if user.id == tool_status_list.0.renter_id %}
-                  <!-- Current renter can extend -->
-                  <div class="mb-3">
-                    <label for="extend_date" class="form-label">Extend Rental Until</label>
-                    <input id="extend_date" name="extend_date" type="datetime-local" class="form-control" required>
-                    <div class="form-text small text-muted">Must be after current End Date & Time.</div>
-                  </div>
-                {% endif %}
-                <!-- Delivery option hidden for all in extension -->
-              {% endif %}
+        <button type="button" class="btn btn-outline-primary position-absolute top-50 end-0 translate-middle-y me-2"
+          id="openDeliveryMapBtn"
+          style="z-index: 10; width: 38px; height: 38px; padding: 0;">
+          <i class="bi bi-geo-alt-fill" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+    </div>
 
-              <div class="d-grid mt-3">
-                {% if tool_status_list.0.label == "Available" %}
-                  <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
-                    <i class="bi bi-calendar-check"></i> Continue to Payment
-                  </button>
-                {% elif user.id == tool_status_list.0.renter_id %}
-                  <!-- Current renter can extend -->
-                  <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
-                    <i class="bi bi-calendar-check"></i> Continue to Payment
-                  </button>
-                {% else %}
-                  <!-- Other farmers: no button/message -->
-                {% endif %}
-              </div>
+    <!-- Hidden lat/lng for delivery -->
+    <input type="hidden" name="delivery_latitude" id="delivery_latitude">
+    <input type="hidden" name="delivery_longitude" id="delivery_longitude">
 
-            </form>
+  {% else %}
+
+    <!-- Extension flow -->
+    <div class="mb-3">
+      <label class="form-label">Current Rental</label>
+      <input type="datetime-local" class="form-control mb-2" 
+             value="{{ tool_status_list.0.start_date|date:'Y-m-d\\TH:i' }}" readonly>
+
+      <input type="datetime-local" class="form-control" 
+             value="{{ tool_status_list.0.end_date|date:'Y-m-d\\TH:i' }}" readonly>
+    </div>
+
+    {% if user.id == tool_status_list.0.renter_id %}
+
+      {% if not tool_status_list.0.extend_date %}
+        <!-- First time extension -->
+        <div class="mb-3">
+          <label for="extend_date" class="form-label">Extend Rental Until</label>
+          <input id="extend_date" name="extend_date" type="datetime-local" class="form-control" required>
+        </div>
+
+      {% else %}
+        <!-- Already extended -->
+        <div class="mb-3">
+          <label class="form-label">Extended Until</label>
+          <input type="datetime-local" class="form-control" 
+                 value="{{ tool_status_list.0.extend_date|date:'Y-m-d\\TH:i' }}" readonly>
+        </div>
+
+        <input type="hidden" name="extend_date"
+               value="{{ tool_status_list.0.extend_date|date:'Y-m-d\\TH:i' }}">
+      {% endif %}
+
+    {% endif %}
+  {% endif %}
+
+  <div class="d-grid mt-3">
+    {% if tool_status_list.0.label == "Available" %}
+      <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
+        <i class="bi bi-calendar-check"></i> Continue to Payment
+      </button>
+
+    {% else %}
+      {% if user.id == tool_status_list.0.renter_id %}
+        {% if not tool_status_list.0.extend_date %}
+          <button id="btnRentNow" type="button" class="btn btn-primary pay-btn">
+            <i class="bi bi-calendar-check"></i> Continue to Payment
+          </button>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  </div>
+</form>
+
+
+<!-- REUSABLE MAP MODAL (SAME AS SHOP REGISTRATION) -->
+<div id="deliveryMapModal" class="custom-modal">
+  <div class="custom-modal-content">
+    <div class="custom-modal-header">
+      <span>Select Delivery Location</span>
+      <button id="closeDeliveryMapBtn">&times;</button>
+    </div>
+
+    <div class="custom-modal-body">
+      <input id="deliveryMapSearch" class="form-control mb-3" type="text" placeholder="Search for a place...">
+      <div id="deliveryLeafletMap" style="height: 450px; width: 100%;"></div>
+
+      <div class="d-flex justify-content-end mt-3 gap-2">
+        <button id="cancelDeliveryMapBtn" class="btn btn-secondary">Cancel</button>
+        <button id="selectDeliveryLocation" class="btn btn-primary" disabled>Select Location</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- SAME STYLES AS SHOP -->
+<style>
+  .custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  .custom-modal.show {
+    display: block;
+  }
+  .custom-modal-content {
+    background: #fff;
+    margin: 50px auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 900px;
+    border-radius: 8px;
+  }
+  .custom-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .custom-modal-header button {
+    border: none;
+    background: none;
+    font-size: 24px;
+    cursor: pointer;
+  }
+</style>
+
+
+<!-- Leaflet + Bootstrap Icons -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  let dMap, dMarker;
+  let dSelectedCoords = null;
+  let dSelectedAddress = null;
+  let dInit = false;
+
+  function initDeliveryMap() {
+    const defaultLoc = [27.7172, 85.3240];
+
+    dMap = L.map("deliveryLeafletMap").setView(defaultLoc, 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(dMap);
+
+    dMarker = L.marker(defaultLoc, { draggable: true }).addTo(dMap);
+
+    function updateDelivery(latlng) {
+      dSelectedCoords = latlng;
+      document.getElementById("selectDeliveryLocation").disabled = false;
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`)
+        .then(res => res.json())
+        .then(data => {
+          dSelectedAddress = data.display_name;
+          document.getElementById("deliveryMapSearch").value = dSelectedAddress;
+        });
+    }
+
+    dMarker.on("dragend", () => updateDelivery(dMarker.getLatLng()));
+    dMap.on("click", (e) => {
+      dMarker.setLatLng(e.latlng);
+      updateDelivery(e.latlng);
+    });
+
+    document.getElementById("deliveryMapSearch").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        let q = this.value.trim();
+        if (!q) return;
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data[0]) {
+              let loc = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+              dMap.setView(loc, 15);
+              dMarker.setLatLng(loc);
+              updateDelivery({ lat: loc[0], lng: loc[1] });
+            }
+          });
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Show/hide delivery address wrapper
+    document.getElementById("id_delivery_needed").addEventListener("change", function() {
+      document.getElementById("deliveryAddressWrap").classList.toggle("d-none", this.value === "no");
+    });
+
+    // Open modal
+    document.getElementById("openDeliveryMapBtn").addEventListener("click", () => {
+      document.getElementById("deliveryMapModal").classList.add("show");
+      if (!dInit) {
+        initDeliveryMap();
+        dInit = true;
+      } else {
+        setTimeout(() => dMap.invalidateSize(), 200);
+      }
+    });
+
+    // Close modal buttons
+    document.getElementById("closeDeliveryMapBtn").addEventListener("click", () => {
+      document.getElementById("deliveryMapModal").classList.remove("show");
+    });
+
+    document.getElementById("cancelDeliveryMapBtn").addEventListener("click", () => {
+      document.getElementById("deliveryMapModal").classList.remove("show");
+    });
+
+    // Select location
+    document.getElementById("selectDeliveryLocation").addEventListener("click", () => {
+      if (!dSelectedAddress || !dSelectedCoords) {
+        alert("Please select a valid location.");
+        return;
+      }
+
+      document.getElementById("delivery_address").value = dSelectedAddress;
+      document.getElementById("delivery_latitude").value = dSelectedCoords.lat;
+      document.getElementById("delivery_longitude").value = dSelectedCoords.lng;
+
+      document.getElementById("deliveryMapModal").classList.remove("show");
+    });
+  });
+</script>
+
+
           </div>
         </div>
       </div>

@@ -26,9 +26,9 @@
           <li class="nav-item"><a href="{% url 'admin-dashboard' %}" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
           <li class="nav-item"><a href="{% url 'registered-shops' %}" class="nav-link"><i class="fas fa-seedling"></i> Registered Shop</a></li>
           <li class="nav-item"><a href="{% url 'registered-sellers' %}" class="nav-link"><i class="fas fa-store-alt"></i> Sellers</a></li>
-          <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-calendar-check"></i> Bookings</a></li>
+          <!-- <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-calendar-check"></i> Bookings</a></li> -->
           <li class="nav-item"><a href="{% url 'registered-farmers' %}" class="nav-link"><i class="fas fa-users"></i> Farmers</a></li>
-          <li class="nav-item"><a href="#" class="nav-link"><i class="fas fa-chart-line"></i> Reports</a></li>
+          <li class="nav-item"><a href="{% url 'admin-messages' %}" class="nav-link"><i class="fas fa-chart-line"></i> Messages</a></li>
         </ul>
       </nav>
 
@@ -38,9 +38,55 @@
         <header class="top-navbar d-flex align-items-center justify-content-between">
           <span class="menu-toggle" onclick="toggleSidebar()">&#9776;</span>
           <h2 class="m-0">Admin Dashboard</h2>
-          {% if request.resolver_match.url_name == 'admin-dashboard' %}
-      <a href="{% url 'admin-logout' %}" class="logout-button">Logout</a>
-    {% endif %}
+          {% if request.resolver_match.url_name == 'admin-dashboard' and request.user.is_authenticated %}
+<div class="dropdown d-inline-block">
+
+  <!-- Small Profile Circle -->
+  <a href="#"
+     class="text-decoration-none"
+     id="adminProfileDropdown"
+     data-bs-toggle="dropdown"
+     aria-expanded="false">
+
+    <div class="profile-circle">
+      {{ request.user.first_name|default:request.user.username|first|upper }}
+    </div>
+  </a>
+
+  <!-- Dropdown Card -->
+  <div class="dropdown-menu dropdown-menu-end shadow p-3"
+       aria-labelledby="adminProfileDropdown"
+       style="min-width: 260px; border-radius: 12px;">
+
+    <div class="text-center">
+      <div class="profile-circle-lg mb-2">
+        {{ request.user.first_name|default:request.user.username|first|upper }}
+      </div>
+
+      <h6 class="mb-0">
+        {{ request.user.get_full_name|default:request.user.username }}
+      </h6>
+
+      <small class="text-muted d-block mb-2">
+        {{ request.user.email }}
+      </small>
+    </div>
+
+    <hr>
+
+    <!-- Logout Form (POST Recommended) -->
+    <form method="post" action="{% url 'admin-logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="dropdown-item text-danger">
+        <i class="fas fa-sign-out-alt me-2"></i> Logout
+      </button>
+    </form>
+
+  </div>
+
+</div>
+{% endif %}
+
         </header>
 
             {% block content %}

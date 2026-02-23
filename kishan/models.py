@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from seller.models import Seller
 from django.contrib.auth.models import User
+from django.db.models import Avg
 
 
 class TimeStampModel(models.Model):
@@ -98,6 +99,7 @@ class ToolReview(TimeStampModel):
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     comment = models.TextField(blank=True, null=True)
+    reply = models.TextField(blank=True, null=True)
     is_flagged = models.BooleanField(default=False)
     is_sentiment_mismatch = models.BooleanField(default=False)
 
@@ -238,7 +240,7 @@ class Rental(TimeStampModel):
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("paid", "Paid"),
-        ("rented", "Rented"),  # for COD confirmation
+        ("rented", "Rented"),
         ("cancelled", "Cancelled"),
     ]
 
@@ -252,14 +254,10 @@ class Rental(TimeStampModel):
         related_name="rentals",
     )
 
-    # Normal rental
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-
-    # Extension (new end date proposal)
     extend_date = models.DateTimeField(blank=True, null=True)
 
-    # Pricing & delivery
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     delivery_needed = models.CharField(
         max_length=3, choices=[("no", "No"), ("yes", "Yes")], default="no"
@@ -267,7 +265,6 @@ class Rental(TimeStampModel):
     delivery_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     delivery_address = models.TextField(blank=True, null=True)
 
-    # Payment
     payment_method = models.CharField(
         max_length=10, choices=PAYMENT_METHOD_CHOICES, default="esewa"
     )
@@ -275,21 +272,10 @@ class Rental(TimeStampModel):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="pending")
     is_active = models.BooleanField(default=True)
 
-    # 🔹 eSewa Integration Fields
     esewa_transaction_uuid = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        unique=True,
-        help_text="Unique transaction ID sent to eSewa (pid).",
+        max_length=100, blank=True, null=True, unique=True
     )
-    esewa_ref_id = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        unique=True,
-        help_text="Reference ID returned by eSewa after successful payment.",
-    )
+    esewa_ref_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
     esewa_status = models.CharField(
         max_length=20,
         choices=[
@@ -298,42 +284,48 @@ class Rental(TimeStampModel):
             ("failed", "Failed"),
         ],
         default="initiated",
-        help_text="Current status of the eSewa transaction.",
     )
-    esewa_response_message = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Raw response or error message received from eSewa.",
-    )
+    esewa_response_message = models.TextField(blank=True, null=True)
 
     def clean(self):
-        # Ensure valid dates
-        if self.end_date <= self.start_date:
-            raise ValidationError("End date must be after start date.")
+        # ---- Guard against None values ----
+        if self.start_date and self.end_date:
+            if self.end_date <= self.start_date:
+                raise ValidationError("End date must be after start date.")
 
-        # If extend_date is provided, validate it
-        if self.extend_date and self.extend_date <= self.end_date:
-            raise ValidationError("Extend date must be after the current End Date.")
+        if self.extend_date:
+            # If end_date exists, compare normally
+            if self.end_date and self.extend_date <= self.end_date:
+                raise ValidationError("Extend date must be after the current End Date.")
 
-        from kishan.utils import is_tool_available
+        # Check availability only if dates exist
+        if self.start_date and (self.end_date or self.extend_date):
+            from kishan.utils import is_tool_available
 
-        # Validate tool availability for the final rental period
-        final_end = self.extend_date if self.extend_date else self.end_date
-        if not is_tool_available(
-            self.tool, self.start_date, final_end, exclude_rental_id=self.pk
-        ):
-            raise ValidationError("Tool is not available for the selected period.")
+            final_end = self.extend_date if self.extend_date else self.end_date
+
+            if not is_tool_available(
+                self.tool, self.start_date, final_end, exclude_rental_id=self.pk
+            ):
+                raise ValidationError("Tool is not available for the selected period.")
 
     def apply_extension(self):
-        """
-        Apply the extend_date to end_date when extension is confirmed.
-        """
-        if self.extend_date and self.extend_date > self.end_date:
+        if self.extend_date and self.end_date and self.extend_date > self.end_date:
             self.end_date = self.extend_date
-            self.extend_date = None  # clear after applying
+            self.extend_date = None
             self.save()
             return True
         return False
+
+    def save(self, *args, **kwargs):
+        """
+        Optional: skip validation when creating programmatically
+        by passing skip_validation=True in kwargs.
+        """
+        skip = kwargs.pop("skip_validation", False)
+        if not skip:
+            self.clean()
+        super(Rental, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.tool.name} rented by {self.farmer.user.username} ({self.status})"
@@ -358,3 +350,15 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.message}"
+
+
+class ContactMessage(models.Model):
+    full_name = models.CharField(max_length=120)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    subject = models.CharField(max_length=120)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.full_name} - {self.subject}"

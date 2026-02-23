@@ -1,10 +1,14 @@
-import datetime
+from datetime import datetime
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Sum, Avg, Count
+from kishan import models
+import json
+from kishan.models import Tool, Rental,Booking, ContactMessage, ToolReview
 from .forms import (
     LoginForm,
     SellerRegistrationForm,
@@ -17,7 +21,7 @@ from .models import Profile
 from seller.models import Seller
 from django.urls import reverse_lazy
 from django.contrib.auth.models import User
-from kishan.models import Booking, Tool
+from django.contrib import messages as django_messages
 
 
 class AdminRootRedirectView(View):
@@ -50,6 +54,7 @@ class AdminLoginView(View):
             messages.error(request, "Invalid credentials or not authorized as admin.")
         return render(request, self.template_name, {"form": form})
 
+
 class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, View):
     template_name = "assets/accounts/admin_dashboard/admin_dashboard.html"
 
@@ -60,11 +65,41 @@ class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, View):
         return redirect("admin_login")
 
     def get(self, request):
-        return render(request, self.template_name)
+        # Total Tools
+        total_tools = Tool.objects.count()
+
+        # Sellers (distinct owners)
+        total_sellers = Tool.objects.values("owner").distinct().count()
+
+        # Pending Requests (Pending Bookings)
+        pending_requests = Booking.objects.filter(status="pending").count()
+
+        # Earnings (Monthly) - sum of paid/rented rentals for current month
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        earnings_monthly = (
+            Rental.objects.filter(
+                status__in=["paid", "rented"], start_date__gte=month_start
+            ).aggregate(total=Sum("total_price"))["total"]
+            or 0
+        )
+
+        # Recent Tools
+        recent_tools = Tool.objects.order_by("-created_at")[:5]
+
+        context = {
+            "total_tools": total_tools,
+            "total_sellers": total_sellers,
+            "pending_requests": pending_requests,
+            "earnings_monthly": earnings_monthly,
+            "recent_tools": recent_tools,
+        }
+        return render(request, self.template_name, context)
 
 
 class AdminLogoutView(View):
-    def get(self, request):
+    def post(self, request):
         logout(request)
         return redirect("admin_login")
 
@@ -183,10 +218,62 @@ class FarmerLoginView(View):
         )
 
 
+# class SellerDashboardView(LoginRequiredMixin, View):
+#     def get(self, request):
+#         seller = getattr(request.user, "seller", None)
+
+#         approval_confirmed = False
+
+#         if seller and seller.is_approved:
+#             if not seller.approval_notification_seen_by_seller:
+#                 approval_confirmed = True
+#             else:
+#                 viewed_at = seller.approval_notification_viewed_at_by_seller
+#                 if viewed_at:
+#                     now = timezone.now()
+#                     diff = now - viewed_at
+#                     if diff.total_seconds() <= 3600:
+#                         approval_confirmed = True
+
+#         total_tools = 0
+#         recent_bookings = Booking.objects.none()
+
+#         if seller:
+#             total_tools = Tool.objects.filter(owner=seller).count()
+
+#             # Get recent bookings for tools owned by this seller
+#             # Order by latest start_date or created_at (adjust as needed)
+#             recent_bookings = (
+#                 Booking.objects.filter(tool__owner=seller)
+#                 .select_related("tool", "farmer__user")
+#                 .order_by("-start_date")[:5]  # last 5 bookings
+#             )
+
+#         context = {
+#             "seller": seller,
+#             "approval_confirmed": approval_confirmed,
+#             "total_tools": total_tools,
+#             "recent_bookings": recent_bookings,
+#         }
+
+#         return render(request, "assets/seller/seller_dashboard.html", context)
+
+#     def post(self, request):
+#         seller = getattr(request.user, "seller", None)
+
+#         if "confirm_approval" in request.POST and seller:
+#             seller.approval_notification_seen_by_seller = True
+#             seller.approval_notification_viewed_at_by_seller = timezone.now()
+#             seller.save()
+
+#         return redirect("seller-dashboard")
+
+
 class SellerDashboardView(LoginRequiredMixin, View):
+    login_url = "farmer-login"
+
     def get(self, request):
         seller = getattr(request.user, "seller", None)
-
         approval_confirmed = False
 
         if seller and seller.is_approved:
@@ -195,43 +282,81 @@ class SellerDashboardView(LoginRequiredMixin, View):
             else:
                 viewed_at = seller.approval_notification_viewed_at_by_seller
                 if viewed_at:
-                    now = timezone.now()
-                    diff = now - viewed_at
+                    diff = timezone.now() - viewed_at
                     if diff.total_seconds() <= 3600:
                         approval_confirmed = True
 
-        total_tools = 0
+        # -------------------------
+        # Total Tools & Recent Bookings
+        # -------------------------
+        total_tools = Tool.objects.filter(owner=seller).count() if seller else 0
         recent_bookings = Booking.objects.none()
 
         if seller:
-            total_tools = Tool.objects.filter(owner=seller).count()
-
-            # Get recent bookings for tools owned by this seller
-            # Order by latest start_date or created_at (adjust as needed)
             recent_bookings = (
                 Booking.objects.filter(tool__owner=seller)
                 .select_related("tool", "farmer__user")
-                .order_by("-start_date")[:5]  # last 5 bookings
+                .order_by("-start_date")[:5]
             )
+
+        # -------------------------
+        # Active Bookings
+        # -------------------------
+        active_bookings = (
+            Booking.objects.filter(
+                tool__owner=seller,
+                status__in=["pending", "confirmed"],
+                end_date__gte=timezone.now(),
+            ).count()
+            if seller
+            else 0
+        )
+
+        # -------------------------
+        # This Month Earnings
+        # -------------------------
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        month_earnings = (
+            Rental.objects.filter(
+                tool__owner=seller,
+                status__in=["paid", "rented"],
+                start_date__gte=month_start,
+            ).aggregate(total=Sum("total_price"))["total"]
+            or 0
+        )
+
+        # -------------------------
+        # Average Rating
+        # -------------------------
+        avg_rating = ToolReview.objects.filter(tool__owner=seller).aggregate(
+            avg=Avg("rating")
+        )["avg"]
+        avg_rating = round(avg_rating, 1) if avg_rating else 0
+
+        # -------------------------
+        # Chart Data
+        # -------------------------
+        tool_data = (
+            Rental.objects.filter(tool__owner=seller, status__in=["paid", "rented"])
+            .values("tool__name")
+            .annotate(total=Count("id"))
+        )
 
         context = {
             "seller": seller,
             "approval_confirmed": approval_confirmed,
             "total_tools": total_tools,
+            "active_bookings": active_bookings,
+            "month_earnings": month_earnings,  # ✅ fixed name
+            "avg_rating": avg_rating,
             "recent_bookings": recent_bookings,
+            "chart_labels": json.dumps([i["tool__name"] for i in tool_data]),
+            "chart_data": json.dumps([i["total"] for i in tool_data]),
         }
 
         return render(request, "assets/seller/seller_dashboard.html", context)
-
-    def post(self, request):
-        seller = getattr(request.user, "seller", None)
-
-        if "confirm_approval" in request.POST and seller:
-            seller.approval_notification_seen_by_seller = True
-            seller.approval_notification_viewed_at_by_seller = timezone.now()
-            seller.save()
-
-        return redirect("seller-dashboard")
 
 
 class LogoutView(View):
@@ -417,3 +542,46 @@ class RegisteredFarmersView(View):
             messages.success(request, "Farmer deleted successfully.")
 
         return redirect(reverse_lazy("registered-farmers"))
+
+
+class AdminMessagesView(View):
+    template_name = "assets/accounts/admin_dashboard/sidebar/message.html"
+
+    def get(self, request):
+        messages_list = ContactMessage.objects.order_by("-created_at")
+        return render(request, self.template_name, {"messages_list": messages_list})
+
+
+class AdminReplyMessageView(View):
+    template_name = "assets/accounts/admin_dashboard/sidebar/message_reply.html"
+
+    def get(self, request, pk):
+        message_obj = get_object_or_404(ContactMessage, pk=pk)
+        return render(request, self.template_name, {"message": message_obj})
+
+    def post(self, request, pk):
+        message_obj = get_object_or_404(ContactMessage, pk=pk)
+        reply_subject = request.POST.get("subject")
+        reply_body = request.POST.get("message")
+
+        if reply_subject and reply_body:
+            send_mail(
+                subject=reply_subject,
+                message=reply_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,  # configure in settings.py (Mailtrap)
+                recipient_list=[message_obj.email],
+                fail_silently=False,
+            )
+            django_messages.success(request, "Reply sent successfully!")
+            return redirect("admin-messages")
+        else:
+            django_messages.error(request, "Both subject and message are required.")
+            return render(request, self.template_name, {"message": message_obj})
+
+
+class AdminDeleteMessageView(View):
+    def post(self, request, pk):
+        message_obj = get_object_or_404(ContactMessage, pk=pk)
+        message_obj.delete()
+        django_messages.success(request, "Message deleted successfully!")
+        return redirect("admin-messages")

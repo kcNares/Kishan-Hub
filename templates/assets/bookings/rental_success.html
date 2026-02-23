@@ -23,22 +23,51 @@
         </div>
         <div class="card-body">
 
+          <!-- Tool -->
           <div class="row mb-2">
             <div class="col-6 fw-semibold">Tool:</div>
             <div class="col-6 text-end">{{ rental.tool.name }}</div>
           </div>
 
+          <!-- Start Date -->
           <div class="row mb-2">
             <div class="col-6 fw-semibold">Start Date:</div>
             <div class="col-6 text-end">{{ rental.start_date|date:"Y-m-d H:i" }}</div>
           </div>
 
+          <!-- Original End Date -->
           <div class="row mb-2">
-            <div class="col-6 fw-semibold">End Date:</div>
+            <div class="col-6 fw-semibold">Original End Date:</div>
             <div class="col-6 text-end">{{ rental.end_date|date:"Y-m-d H:i" }}</div>
           </div>
 
+          <!-- EXTENSION DETAILS -->
+          {% if rental.extend_date %}
+          <hr>
+
           <div class="row mb-2">
+            <div class="col-6 fw-semibold text-success">Extended Until:</div>
+            <div class="col-6 text-end text-success fw-semibold">
+              {{ rental.extend_date|date:"Y-m-d H:i" }}
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-6 fw-semibold">Extension Cost:</div>
+            <div class="col-6 text-end">
+              {% if rental.extension_price %}
+                Rs {{ rental.extension_price }}
+              {% else %}
+                Rs 0
+              {% endif %}
+            </div>
+          </div>
+
+          {% endif %}
+          <!-- END EXTENSION DETAILS -->
+
+          <!-- Delivery -->
+          <div class="row mb-2 mt-2">
             <div class="col-6 fw-semibold">Delivery:</div>
             <div class="col-6 text-end">{{ rental.delivery_needed|title }}</div>
           </div>
@@ -50,11 +79,13 @@
           </div>
           {% endif %}
 
+          <!-- Total Bill -->
           <div class="row mb-2">
             <div class="col-6 fw-semibold">Total Bill:</div>
             <div class="col-6 text-end">Rs {{ rental.total_price }}</div>
           </div>
 
+          <!-- Payment Method -->
           <div class="row mb-2">
             <div class="col-6 fw-semibold">Payment Method:</div>
             <div class="col-6 text-end">
@@ -66,6 +97,7 @@
             </div>
           </div>
 
+          <!-- Status -->
           <div class="row mb-2">
             <div class="col-6 fw-semibold">Status:</div>
             <div class="col-6 text-end">
