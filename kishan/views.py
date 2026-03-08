@@ -22,7 +22,7 @@ from django.views.generic import TemplateView
 from accounts.models import Profile
 from django.utils.dateparse import parse_datetime
 from geopy.geocoders import Nominatim
-from .models import Booking, Notification, Rental, Tool, Category, SearchQuery, ToolReview
+from .models import Booking, ChatMessage, Notification, Rental, Tool, Category, SearchQuery, ToolReview
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from .utils import (
@@ -387,7 +387,7 @@ class ToolAutocompleteView(View):
                 .distinct()[:10]
             )
         return JsonResponse(list(suggestions), safe=False)
-    
+
 
 class ToolDetailView(View):
     template_name = "assets/tool_details/tool_detail.html"
@@ -1229,3 +1229,20 @@ class ContactView(FormView):
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
 
         return super().form_invalid(form)
+
+
+class ChatPageView(TemplateView):
+    template_name = "assets/chat.html"
+
+
+class ChatHistoryView(View):
+
+    def get(self, request):
+
+        messages = ChatMessage.objects.order_by("timestamp")[:50]
+
+        data = [
+            {"username": msg.user.username, "message": msg.message} for msg in messages
+        ]
+
+        return JsonResponse(data, safe=False)

@@ -10,6 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,10 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^65ib149)5b53mhrz^0^zdxz2*@e*vpsn=f58i+e!$t87w*jvk'
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = []
 
@@ -38,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
+    'channels',
     'kishan',
     'seller',
 ]
@@ -83,11 +88,11 @@ WSGI_APPLICATION = 'KISHANHUB.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "kishanhub",
-        "USER": "kishan",
-        "PASSWORD": "kishan#123",
-        "HOST": "localhost",
-        "PORT": "5432",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
     }
 }
 
@@ -152,6 +157,10 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 
 
+ASGI_APPLICATION = "KISHANHUB.asgi.application"
+
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
@@ -162,8 +171,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "sandbox.smtp.mailtrap.io"
 EMAIL_PORT = 587  # You can also use 2525 or 25, but 587 is preferred for STARTTLS
-EMAIL_HOST_USER = "62cae6da74eeb3"  # your Mailtrap username
-EMAIL_HOST_PASSWORD = "6c419ec84bfac4"  # your full Mailtrap password
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")  # your Mailtrap username
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") # your full Mailtrap password
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "nareshkumarkc.077@kathford.edu.np"
 
@@ -181,7 +190,7 @@ ESEWA_STATUS_URL = "https://rc.esewa.com.np/api/epay/transaction/status/"
 # ESEWA_STATUS_URL = "https://epay.esewa.com.np/api/epay/transaction/status/"
 
 ESEWA_PRODUCT_CODE = os.environ.get("ESEWA_PRODUCT_CODE", "EPAYTEST")
-ESEWA_SECRET_KEY = os.environ.get("ESEWA_SECRET_KEY", "8gBm/:&EnhH.1/q")
+ESEWA_SECRET_KEY = os.getenv("ESEWA_SECRET_KEY")
 
 ESEWA_SUCCESS_URL = os.environ.get(
     "ESEWA_SUCCESS_URL", "https://127.0.0.1:8000/kishan/esewa/success/"

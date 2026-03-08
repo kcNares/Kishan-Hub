@@ -8,6 +8,8 @@
     <link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'assets/img/logo.jpg' %}">
+    <link rel="apple-touch-icon" href="{% static 'assets/img/logo.jpg' %}">
 </head>
 <body>
     {% include 'assets/navbar.html' %}
@@ -17,6 +19,261 @@
 
     {% endblock %}
     
+    <!-- Floating Chat Button -->
+
+<div id="chat-button">💬</div>
+
+
+<!-- Chat Widget -->
+
+<div id="chat-widget">
+
+<div id="chat-header">
+Support Chat
+</div>
+
+<div id="chat-messages"></div>
+
+<div id="chat-input-area">
+<input id="chat-input" placeholder="Type message">
+<button id="send-btn">➤</button>
+</div>
+
+</div>
+
+
+<style>
+
+#chat-button{
+position:fixed;
+bottom:25px;
+right:25px;
+width:60px;
+height:60px;
+border-radius:50%;
+background:linear-gradient(135deg,#6a5cff,#4cc9f0);
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-size:24px;
+cursor:pointer;
+z-index:99999;
+}
+
+#chat-widget{
+position:fixed;
+bottom:100px;
+right:25px;
+width:360px;
+height:520px;
+background:white;
+border-radius:18px;
+box-shadow:0 20px 50px rgba(0,0,0,.25);
+display:none;
+flex-direction:column;
+overflow:hidden;
+z-index:99999;
+}
+
+#chat-header{
+background:linear-gradient(120deg,#6a5cff,#4cc9f0);
+color:white;
+padding:16px;
+font-weight:600;
+}
+
+#chat-messages{
+flex:1;
+padding:16px;
+overflow-y:auto;
+background:#f7f8ff;
+}
+
+.message{
+display:flex;
+margin-bottom:10px;
+}
+
+.message span{
+padding:10px 14px;
+border-radius:12px;
+max-width:70%;
+font-size:14px;
+}
+
+.user{
+justify-content:flex-end;
+}
+
+.user span{
+background:#6a5cff;
+color:white;
+}
+
+.other span{
+background:white;
+box-shadow:0 3px 10px rgba(0,0,0,.1);
+}
+
+#chat-input-area{
+display:flex;
+padding:10px;
+border-top:1px solid #eee;
+}
+
+#chat-input{
+flex:1;
+border:none;
+outline:none;
+padding:10px;
+background:#f2f3ff;
+border-radius:8px;
+}
+
+#send-btn{
+border:none;
+margin-left:8px;
+background:#6a5cff;
+color:white;
+width:40px;
+border-radius:8px;
+cursor:pointer;
+}
+
+</style>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const chatButton = document.getElementById("chat-button");
+const chatWidget = document.getElementById("chat-widget");
+
+chatButton.addEventListener("click", function(){
+
+chatWidget.style.display =
+(chatWidget.style.display === "flex") ? "none" : "flex";
+
+loadChatHistory();
+
+});
+
+
+/* WebSocket Connection */
+
+const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+
+const socket = new WebSocket(
+protocol + window.location.host + "/ws/chat/support/"
+);
+
+const username = "{{ request.user.username }}";
+
+
+/* WebSocket Events */
+
+socket.onopen = function(){
+console.log("WebSocket connected");
+};
+
+socket.onerror = function(error){
+console.log("WebSocket error:", error);
+};
+
+socket.onclose = function(){
+console.log("WebSocket closed");
+};
+
+
+/* Receive Messages */
+
+socket.onmessage = function(e){
+
+const data = JSON.parse(e.data);
+
+const messages = document.getElementById("chat-messages");
+
+const div = document.createElement("div");
+
+div.className =
+(data.username === username) ? "message user" : "message other";
+
+div.innerHTML = "<span>"+data.message+"</span>";
+
+messages.appendChild(div);
+
+messages.scrollTop = messages.scrollHeight;
+
+};
+
+
+/* Send Message */
+
+function sendMessage(){
+
+const input = document.getElementById("chat-input");
+
+const message = input.value.trim();
+
+if(!message) return;
+
+if(socket.readyState === WebSocket.OPEN){
+
+socket.send(JSON.stringify({
+message: message,
+username: username
+}));
+
+}
+
+input.value="";
+
+}
+
+
+document.getElementById("send-btn").addEventListener("click", sendMessage);
+
+document.getElementById("chat-input").addEventListener("keydown", function(e){
+if(e.key === "Enter"){
+sendMessage();
+}
+});
+
+
+/* Load Chat History */
+
+function loadChatHistory(){
+
+fetch("/chat/history/")
+.then(res=>res.json())
+.then(data=>{
+
+const messages = document.getElementById("chat-messages");
+
+messages.innerHTML="";
+
+data.forEach(msg=>{
+
+const div = document.createElement("div");
+
+div.className =
+(msg.username === username) ? "message user" : "message other";
+
+div.innerHTML = "<span>"+msg.message+"</span>";
+
+messages.appendChild(div);
+
+});
+
+});
+
+}
+
+});
+
+</script>
 
     {% include 'assets/footer.html' %}
     {% include 'assets/login_model.html' %}

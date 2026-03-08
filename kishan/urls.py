@@ -1,6 +1,6 @@
 from django.urls import path
 from kishan import views
-from .views import BookAndRentListView, ContactView, EsewaFailureView, EsewaSuccessView, RentalCODSuccessView, RentalEsewaSuccessView
+from .views import BookAndRentListView, ChatHistoryView, ChatPageView, ContactView, EsewaFailureView, EsewaSuccessView, RentalCODSuccessView, RentalEsewaSuccessView
 
 urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
@@ -56,4 +56,6 @@ urlpatterns = [
         name="book-and-rent-tools",
     ),
     path("contact/", ContactView.as_view(), name="contact"),
+    path("chat/", ChatPageView.as_view(), name="chat_page"),
+    path("chat/history/", ChatHistoryView.as_view(), name="chat_history"),
 ]

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
     Category,
+    ChatMessage,
     Tag,
     Tool,
     SearchQuery,
@@ -107,3 +108,6 @@ class ToolReviewAdmin(admin.ModelAdmin):
 
                 raise ValidationError("This farmer has already reviewed this tool.")
         super().save_model(request, obj, form, change)
+
+
+admin.site.register(ChatMessage)

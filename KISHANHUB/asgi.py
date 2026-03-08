@@ -8,9 +8,23 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
 import os
+import django
 
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'KISHANHUB.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "KISHANHUB.settings")
 
-application = get_asgi_application()
+django.setup()
+
+import kishan.routing  # IMPORTANT: import after django.setup()
+
+application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),
+        "websocket": AuthMiddlewareStack(
+            URLRouter(kishan.routing.websocket_urlpatterns)
+        ),
+    }
+)
