@@ -25,6 +25,7 @@ from geopy.geocoders import Nominatim
 from .models import Booking, ChatMessage, Notification, Rental, Tool, Category, SearchQuery, ToolReview
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from .services.rental_service import RentalService
 from .utils import (
     haversine_distance, 
     is_tool_available,
@@ -44,6 +45,9 @@ from django.views.generic import (
 )
 logger = logging.getLogger(__name__)
 from .recommender import recommend_tools
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from groq import Groq
 
 
 # Create your views here.
@@ -881,194 +885,51 @@ class BookingNotifier:
 def notify_upcoming_bookings():
     BookingNotifier.notify_upcoming_bookings()
 
-
 class RentToolView(LoginRequiredMixin, View):
-    login_url = "farmer-login"
+    login_url = 'farmer-login'
     template_name = "assets/bookings/rent.html"
 
-    # -------------------------
-    # Calculate cost
-    # -------------------------
-    def calculate_rental_cost(self, start, end, daily_rate):
-        diff_hours = (end - start).total_seconds() / 3600
-        hourly_rate = daily_rate / Decimal("24")
-        if diff_hours <= 24:
-            cost = min(daily_rate, Decimal(diff_hours) * hourly_rate)
-        else:
-            full_days = Decimal(diff_hours) // 24
-            rem_hours = Decimal(diff_hours) % 24
-            cost = full_days * daily_rate + min(daily_rate, rem_hours * hourly_rate)
-        return cost.quantize(Decimal("0.00"))
-
-    # -------------------------
-    # GET
-    # -------------------------
     def get(self, request, tool_id):
         tool = get_object_or_404(Tool, id=tool_id)
         form = RentalForm()
-
         active_rental = (
-            Rental.objects.filter(
-                tool=tool,
-                is_active=True,
-            )
-            .order_by("-id")
-            .first()
+            Rental.objects.filter(tool=tool, is_active=True).order_by("-id").first()
         )
-
-        if active_rental:
-            tool_status = {
-                "label": "Rented",
-                "badge": "danger",
-                "start_date": active_rental.start_date,
-                "end_date": active_rental.end_date,
-                "extend_date": active_rental.extend_date,
-                "renter_id": active_rental.farmer.user.id,
-            }
-        else:
-            tool_status = {
-                "label": "Available",
-                "badge": "success",
-                "start_date": None,
-                "end_date": None,
-                "extend_date": None,
-                "renter_id": None,
-            }
-
+        tool_status = {
+            "label": "Rented" if active_rental else "Available",
+            "badge": "danger" if active_rental else "success",
+            "start_date": active_rental.start_date if active_rental else None,
+            "end_date": active_rental.end_date if active_rental else None,
+            "extend_date": active_rental.extend_date if active_rental else None,
+            "renter_id": active_rental.farmer.user.id if active_rental else None,
+        }
         return render(
             request,
             self.template_name,
-            {
-                "tool": tool,
-                "form": form,
-                "tool_status_list": [tool_status],
-            },
+            {"tool": tool, "form": form, "tool_status_list": [tool_status]},
         )
 
-    # -------------------------
-    # POST
-    # -------------------------
     def post(self, request, tool_id):
         tool = get_object_or_404(Tool, id=tool_id)
-
-        farmer_profile = Profile.objects.get(user=request.user, is_farmer=True)
-
-        current_rental = (
-            Rental.objects.filter(
-                tool=tool,
-                is_active=True,
-                farmer=farmer_profile,
-            )
-            .order_by("-id")
-            .first()
-        )
-
-        # -----------------------------
-        # EXTEND
-        # -----------------------------
-        if current_rental and not current_rental.extend_date:
-
-            extend_date_str = request.POST.get("extend_date")
-            payment_method = request.POST.get("payment_method")
-
-            if not extend_date_str or not payment_method:
-                messages.error(request, "Select extension date and payment method.")
-                return redirect(request.path)
-
-            new_end_date = datetime.strptime(extend_date_str, "%Y-%m-%dT%H:%M")
-
-            if timezone.is_naive(new_end_date):
-                new_end_date = timezone.make_aware(new_end_date)
-
-            if new_end_date <= current_rental.end_date:
-                messages.error(request, "New end date must be after existing end date.")
-                return redirect(request.path)
-
-            # Calculate extra cost
-            extra_cost = self.calculate_rental_cost(
-                current_rental.end_date,
-                new_end_date,
-                tool.daily_rent_price,
-            )
-
-            # Save extension data (no overwrite)
-            current_rental.extend_date = new_end_date
-            current_rental.total_price += extra_cost
-            current_rental.save()
-
-            if payment_method == "cash":
-                messages.success(request, "Extension added. Pay on delivery.")
-                return redirect("rental-cod-success", pk=current_rental.pk)
-
-            # eSewa
-            current_rental.payment_method = "esewa"
-            current_rental.status = "pending"
-            current_rental.is_active = False
-            current_rental.esewa_transaction_uuid = str(uuid.uuid4())
-            current_rental.save()
-
-            context = {
-                "esewa_url": settings.ESEWA_EPAY_URL,
-                "txAmt": str(extra_cost),
-                "tAmt": str(extra_cost),
-                "psc": "0",
-                "pdc": "0",
-                "pid": current_rental.esewa_transaction_uuid,
-                "scd": settings.ESEWA_PRODUCT_CODE,
-                "su": settings.ESEWA_SUCCESS_URL,
-                "fu": settings.ESEWA_FAILURE_URL,
-            }
-            return render(request, "assets/bookings/esewa_redirect.html", context)
-
-        # -----------------------------
-        # NEW RENTAL
-        # -----------------------------
         form = RentalForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Please fix errors.")
+            messages.error(request, "Please fix form errors.")
             return redirect(request.path)
-
-        start_date = form.cleaned_data["start_date"]
-        end_date = form.cleaned_data["end_date"]
-        payment_method = form.cleaned_data["payment_method"]
-
-        if timezone.is_naive(start_date):
-            start_date = timezone.make_aware(start_date)
-        if timezone.is_naive(end_date):
-            end_date = timezone.make_aware(end_date)
-
-        rental_cost = self.calculate_rental_cost(
-            start_date, end_date, tool.daily_rent_price
-        )
 
         rental = form.save(commit=False)
         rental.tool = tool
-        rental.farmer = farmer_profile
-        rental.total_price = rental_cost
-        rental.delivery_charge = Decimal("0.00")
-        rental.paid_amount = Decimal("0.00")
-        rental.extend_date = None
-        rental.is_active = payment_method != "esewa"
-        rental.status = "pending"
-        rental.esewa_transaction_uuid = str(uuid.uuid4())
+        rental.farmer = request.user.profile
+        rental.total_price = RentalService.calculate_rental_cost(
+            rental.start_date, rental.end_date, tool.daily_rent_price
+        )
         rental.save()
 
-        if payment_method == "cash":
+        if rental.payment_method == "cash":
             messages.success(request, "Rental created. Pay on delivery.")
             return redirect("rental-cod-success", pk=rental.pk)
 
-        context = {
-            "esewa_url": settings.ESEWA_EPAY_URL,
-            "txAmt": str(rental_cost),
-            "tAmt": str(rental_cost),
-            "psc": "0",
-            "pdc": "0",
-            "pid": rental.esewa_transaction_uuid,
-            "scd": settings.ESEWA_PRODUCT_CODE,
-            "su": settings.ESEWA_SUCCESS_URL,
-            "fu": settings.ESEWA_FAILURE_URL,
-        }
-        return render(request, "assets/bookings/esewa_redirect.html", context)
+        payload = RentalService.prepare_esewa_payload(rental, rental.total_price)
+        return render(request, "assets/bookings/esewa_redirect.html", payload)
 
 
 # --- eSewa Success / Failure Views ---
@@ -1231,18 +1092,69 @@ class ContactView(FormView):
         return super().form_invalid(form)
 
 
-class ChatPageView(TemplateView):
-    template_name = "assets/chat.html"
+@method_decorator(csrf_exempt, name="dispatch")
+class ChatBotView(View):
 
+    def get_client(self):
+        return Groq(api_key=settings.GROQ_API_KEY)
 
-class ChatHistoryView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            user_message = data.get("message", "").strip()
+            if not user_message:
+                return JsonResponse(
+                    {"answer": "Please type a message.", "available_tools": []}
+                )
 
-    def get(self, request):
+            user = request.user if request.user.is_authenticated else None
 
-        messages = ChatMessage.objects.order_by("timestamp")[:50]
+            if user:
+                ChatMessage.objects.create(user=user, message=user_message, is_ai=False)
 
-        data = [
-            {"username": msg.user.username, "message": msg.message} for msg in messages
-        ]
+            available_tools_qs = Tool.objects.filter(status="available")
+            available_tools = [tool.name for tool in available_tools_qs]
 
-        return JsonResponse(data, safe=False)
+            system_prompt = f"""
+You are an assistant for the KishanHub tool rental platform.
+Answer questions only about signup/login, available tools, rental process, payments (COD/eSewa), and extending rentals.
+Current available tools: {', '.join(available_tools) if available_tools else 'No tools available right now'}.
+If unrelated, say: "I can only answer questions about KishanHub."
+Be friendly, concise, and professional.
+"""
+            # Build chat history
+            messages = [{"role": "system", "content": system_prompt}]
+            if user:
+                past = ChatMessage.objects.filter(user=user).order_by("-id")[:10]
+                for msg in reversed(past):
+                    role = "assistant" if msg.is_ai else "user"
+                    messages.append({"role": role, "content": msg.message})
+
+            messages.append({"role": "user", "content": user_message})
+
+            # Call Groq
+            client = self.get_client()
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # Free model
+                messages=messages,
+                temperature=0.3,
+                max_tokens=500,
+            )
+
+            ai_answer = response.choices[0].message.content.strip()
+
+            if user:
+                ChatMessage.objects.create(user=user, message=ai_answer, is_ai=True)
+
+            return JsonResponse(
+                {"answer": ai_answer, "available_tools": available_tools}
+            )
+
+        except Exception as e:
+            logger.exception(f"ChatBot error: {e}")
+            return JsonResponse(
+                {
+                    "answer": "AI is temporarily unavailable. Please try again later.",
+                    "available_tools": [],
+                }
+            )

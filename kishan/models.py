@@ -365,11 +365,13 @@ class ContactMessage(models.Model):
 
 
 class ChatMessage(models.Model):
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     message = models.TextField()
-
-    timestamp = models.DateTimeField(auto_now_add=True)
+    is_ai = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username}: {self.message[:30]}"
+        sender = (
+            "AI" if self.is_ai else self.user.username if self.user else "Anonymous"
+        )
+        return f"{sender}: {self.message[:30]}"

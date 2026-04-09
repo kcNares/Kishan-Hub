@@ -152,6 +152,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 # Generic Django login/logout paths
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
